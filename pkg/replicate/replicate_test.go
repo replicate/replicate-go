@@ -1,0 +1,122 @@
+package replicate_test
+
+import (
+	"context"
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/replicate/replicate-go/pkg/replicate"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestGetCollection(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/collections/super-resolution", r.URL.Path)
+
+		collection := &replicate.Collection{
+			Name:        "Super resolution",
+			Slug:        "super-resolution",
+			Description: "Upscaling models that create high-quality images from low-quality images.",
+			Models:      []replicate.Model{},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(collection)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	auth := "test-token"
+	userAgent := "test-user-agent"
+	baseURL := mockServer.URL
+
+	client := replicate.New(auth, &userAgent, &baseURL)
+	client.HTTPClient = mockServer.Client()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	collection, err := client.GetCollection(ctx, "super-resolution")
+	assert.NoError(t, err)
+	assert.Equal(t, "Super resolution", collection.Name)
+	assert.Equal(t, "super-resolution", collection.Slug)
+	assert.Equal(t, "Upscaling models that create high-quality images from low-quality images.", collection.Description)
+	assert.Equal(t, []replicate.Model{}, collection.Models)
+}
+
+func TestCreatePrediction(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/predictions", r.URL.Path)
+
+		// Read the request body
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+
+		// Unmarshal the request body and check if the fields are correct
+		var requestBody map[string]interface{}
+		err = json.Unmarshal(body, &requestBody)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", requestBody["version"])
+		assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
+		assert.Equal(t, "https://example.com/webhook", requestBody["webhook"])
+		assert.Equal(t, []interface{}{"start", "completed"}, requestBody["webhook_events_filter"])
+
+		// Return a fake prediction response
+		response := replicate.Prediction{
+			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+			Status:    "starting",
+			Input:     map[string]interface{}{"text": "Alice"},
+			Output:    nil,
+			Error:     nil,
+			Logs:      nil,
+			Metrics:   nil,
+			CreatedAt: "2022-04-26T22:13:06.224088Z",
+			UpdatedAt: "2022-04-26T22:13:06.224088Z",
+		}
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	// Create a Replicate client with the test server URL
+	auth := "test-token"
+	userAgent := "test-user-agent"
+	baseURL := mockServer.URL
+
+	client := replicate.New(auth, &userAgent, &baseURL)
+
+	// Call CreatePrediction and check the result
+	input := replicate.PredictionInput{"text": "Alice"}
+	webhook := replicate.Webhook{
+		URL:    "https://example.com/webhook",
+		Events: []replicate.WebhookEventType{"start", "completed"},
+	}
+
+	prediction, err := client.CreatePrediction(context.Background(), "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", input, &webhook)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
+	assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", prediction.Version)
+	assert.Equal(t, replicate.Starting, prediction.Status)
+}
