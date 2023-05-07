@@ -13,6 +13,89 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestListCollections(t *testing.T) {
+	// Create a test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/collections", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		type result struct {
+			Slug        string `json:"slug"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		}
+
+		var response replicate.Page[result]
+
+		switch r.URL.Query().Get("cursor") {
+		case "":
+			next := "/collections?cursor=2"
+			// Return the first page of collections
+			response = replicate.Page[result]{
+				Previous: nil,
+				Next:     &next,
+				Results: []result{
+					{Slug: "collection-1", Name: "Collection 1", Description: "..."},
+				},
+			}
+		case "2":
+			previous := "/collections?cursor=1"
+			// Return the second page of collections
+			response = replicate.Page[result]{
+				Previous: &previous,
+				Next:     nil,
+				Results: []result{
+					{Slug: "collection-2", Name: "Collection 2", Description: "..."},
+				},
+			}
+		}
+
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBytes)
+	}))
+	defer server.Close()
+
+	// Create a Replicate client with the test server URL
+	client := &replicate.Client{
+		BaseURL:    server.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	// Call ListCollections and check the result
+	initialPage, err := client.ListCollections(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resultsChan, errChan := replicate.Paginate(context.Background(), client, initialPage)
+
+	var collections []replicate.Collection
+	for results := range resultsChan {
+		collections = append(collections, results...)
+	}
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			t.Fatal(err)
+		}
+	default:
+	}
+
+	expectedCollections := []replicate.Collection{
+		{Slug: "collection-1", Name: "Collection 1", Description: "..."},
+		{Slug: "collection-2", Name: "Collection 2", Description: "..."},
+	}
+
+	assert.Equal(t, expectedCollections, collections)
+}
+
 func TestGetCollection(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
@@ -22,7 +105,7 @@ func TestGetCollection(t *testing.T) {
 			Name:        "Super resolution",
 			Slug:        "super-resolution",
 			Description: "Upscaling models that create high-quality images from low-quality images.",
-			Models:      []replicate.Model{},
+			Models:      &[]replicate.Model{},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -47,7 +130,7 @@ func TestGetCollection(t *testing.T) {
 	assert.Equal(t, "Super resolution", collection.Name)
 	assert.Equal(t, "super-resolution", collection.Slug)
 	assert.Equal(t, "Upscaling models that create high-quality images from low-quality images.", collection.Description)
-	assert.Equal(t, []replicate.Model{}, collection.Models)
+	assert.Empty(t, *collection.Models)
 }
 
 func TestCreatePrediction(t *testing.T) {

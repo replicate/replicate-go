@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
+// Client represents a Replicate API client.
 type Client struct {
 	Auth       string
 	UserAgent  *string
@@ -18,6 +20,13 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
+type Page[T any] struct {
+	Previous *string `json:"previous,omitempty"`
+	Next     *string `json:"next,omitempty"`
+	Results  []T     `json:"results"`
+}
+
+// New creates a new Replicate API client.
 func New(auth string, userAgent *string, baseURL *string) *Client {
 	client := &http.Client{}
 
@@ -63,7 +72,9 @@ func (r *Client) request(ctx context.Context, method, path string, requestBody i
 	// Set headers
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", fmt.Sprintf("Token %s", r.Auth))
-	request.Header.Set("User-Agent", *r.UserAgent)
+	if r.UserAgent != nil {
+		request.Header.Set("User-Agent", *r.UserAgent)
+	}
 
 	// Send request
 	response, err := r.HTTPClient.Do(request)
@@ -80,13 +91,12 @@ func (r *Client) request(ctx context.Context, method, path string, requestBody i
 
 	// Check for API errors
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusBadRequest {
-		var apiError struct {
-			Message string `json:"message"`
+		var apiError APIError
+		err := json.Unmarshal(responseBytes, &apiError)
+		if err != nil {
+			return fmt.Errorf("unable to parse API error: %v", err)
 		}
-		if err := json.Unmarshal(responseBytes, &apiError); err != nil {
-			return fmt.Errorf("failed to unmarshal error message: %w", err)
-		}
-		return errors.New(apiError.Message)
+		return apiError
 	}
 
 	// Unmarshal response into target, if provided
@@ -107,4 +117,59 @@ func constructURL(baseUrl, route string) string {
 		baseUrl = baseUrl + "/"
 	}
 	return baseUrl + route
+}
+
+// Paginate takes a Page and the Client request method, and iterates through pages of results.
+func Paginate[T any](ctx context.Context, client *Client, initialPage *Page[T]) (<-chan []T, <-chan error) {
+	resultsChan := make(chan []T)
+	errChan := make(chan error)
+
+	go func() {
+		defer close(resultsChan)
+		defer close(errChan)
+
+		resultsChan <- initialPage.Results
+		nextURL := initialPage.Next
+
+		for nextURL != nil {
+			page := &Page[T]{}
+			err := client.request(ctx, "GET", *nextURL, nil, page)
+			if err != nil {
+				errChan <- err
+				return
+			}
+
+			resultsChan <- page.Results
+
+			nextURL = page.Next
+		}
+	}()
+
+	return resultsChan, errChan
+}
+
+func (r *Client) Run(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook) (PredictionOutput, error) {
+	namePattern := `[a-zA-Z0-9]+(?:(?:[._]|__|[-]*)[a-zA-Z0-9]+)*`
+	pattern := fmt.Sprintf(`^(?P<owner>%s)/(?P<name>%s):(?P<version>[0-9a-fA-F]+)$`, namePattern, namePattern)
+
+	regex := regexp.MustCompile(pattern)
+	match := regex.FindStringSubmatch(identifier)
+
+	if len(match) == 0 {
+		return nil, errors.New("invalid version. it must be in the format \"owner/name:version\"")
+	}
+
+	version := ""
+	for i, name := range regex.SubexpNames() {
+		if name == "version" {
+			version = match[i]
+		}
+	}
+
+	prediction, err := r.CreatePrediction(ctx, version, input, webhook)
+	if err != nil {
+		return nil, err
+	}
+
+	return prediction.Output, err
 }
