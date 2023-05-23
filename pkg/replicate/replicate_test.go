@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -181,7 +182,7 @@ func TestCreatePrediction(t *testing.T) {
 	defer mockServer.Close()
 
 	// Create a Replicate client with the test server URL
-	auth := "test-token"
+	auth := os.Getenv("REPL")
 	userAgent := "test-user-agent"
 	baseURL := mockServer.URL
 
