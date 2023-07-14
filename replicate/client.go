@@ -23,15 +23,15 @@ type ClientOption func(*Client)
 
 // NewClient creates a new Replicate API client.
 func NewClient(auth string, options ...ClientOption) *Client {
-	client := &http.Client{}
 	defaultUserAgent := "replicate-go"
 	defaultBaseURL := "https://api.replicate.com/v1"
+	defaultClient := http.DefaultClient
 
 	c := &Client{
 		Auth:       auth,
 		UserAgent:  &defaultUserAgent,
 		BaseURL:    defaultBaseURL,
-		HTTPClient: client,
+		HTTPClient: defaultClient,
 	}
 
 	for _, option := range options {
