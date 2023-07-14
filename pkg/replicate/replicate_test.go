@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -15,8 +14,7 @@ import (
 )
 
 func TestListCollections(t *testing.T) {
-	// Create a test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/collections", r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
 
@@ -28,10 +26,11 @@ func TestListCollections(t *testing.T) {
 
 		var response replicate.Page[result]
 
+		mockCursor := "cD0yMDIyLTAxLTIxKzIzJTNBMTglM0EyNC41MzAzNTclMkIwMCUzQTAw"
+
 		switch r.URL.Query().Get("cursor") {
 		case "":
-			next := "/collections?cursor=2"
-			// Return the first page of collections
+			next := "/collections?cursor=" + mockCursor
 			response = replicate.Page[result]{
 				Previous: nil,
 				Next:     &next,
@@ -39,9 +38,8 @@ func TestListCollections(t *testing.T) {
 					{Slug: "collection-1", Name: "Collection 1", Description: "..."},
 				},
 			}
-		case "2":
-			previous := "/collections?cursor=1"
-			// Return the second page of collections
+		case mockCursor:
+			previous := "/collections?cursor=" + mockCursor
 			response = replicate.Page[result]{
 				Previous: &previous,
 				Next:     nil,
@@ -59,16 +57,14 @@ func TestListCollections(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(responseBytes)
 	}))
-	defer server.Close()
+	defer mockServer.Close()
 
-	// Create a Replicate client with the test server URL
 	client := &replicate.Client{
-		BaseURL:    server.URL,
+		BaseURL:    mockServer.URL,
 		Auth:       "test-token",
 		HTTPClient: http.DefaultClient,
 	}
 
-	// Call ListCollections and check the result
 	initialPage, err := client.ListCollections(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -116,12 +112,11 @@ func TestGetCollection(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	auth := "test-token"
-	userAgent := "test-user-agent"
-	baseURL := mockServer.URL
-
-	client := replicate.New(auth, &userAgent, &baseURL)
-	client.HTTPClient = mockServer.Client()
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -139,14 +134,12 @@ func TestCreatePrediction(t *testing.T) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/predictions", r.URL.Path)
 
-		// Read the request body
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer r.Body.Close()
 
-		// Unmarshal the request body and check if the fields are correct
 		var requestBody map[string]interface{}
 		err = json.Unmarshal(body, &requestBody)
 		if err != nil {
@@ -158,7 +151,6 @@ func TestCreatePrediction(t *testing.T) {
 		assert.Equal(t, "https://example.com/webhook", requestBody["webhook"])
 		assert.Equal(t, []interface{}{"start", "completed"}, requestBody["webhook_events_filter"])
 
-		// Return a fake prediction response
 		response := replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
 			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
@@ -181,21 +173,20 @@ func TestCreatePrediction(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	// Create a Replicate client with the test server URL
-	auth := os.Getenv("REPL")
-	userAgent := "test-user-agent"
-	baseURL := mockServer.URL
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
 
-	client := replicate.New(auth, &userAgent, &baseURL)
-
-	// Call CreatePrediction and check the result
 	input := replicate.PredictionInput{"text": "Alice"}
 	webhook := replicate.Webhook{
 		URL:    "https://example.com/webhook",
 		Events: []replicate.WebhookEventType{"start", "completed"},
 	}
 
-	prediction, err := client.CreatePrediction(context.Background(), "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", input, &webhook)
+	version := "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
+	prediction, err := client.CreatePrediction(context.Background(), version, input, &webhook)
 	if err != nil {
 		t.Fatal(err)
 	}
