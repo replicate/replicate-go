@@ -224,5 +224,7 @@ func (r *Client) Run(ctx context.Context, identifier string, input PredictionInp
 		return nil, err
 	}
 
+	prediction, err = r.Wait(ctx, *prediction, 0, 0)
+
 	return prediction.Output, err
 }
