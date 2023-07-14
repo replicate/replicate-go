@@ -55,6 +55,13 @@ func WithBaseURL(baseURL string) ClientOption {
 	}
 }
 
+// WithHTTPClient sets the HTTP client used by the client.
+func WithHTTPClient(httpClient *http.Client) ClientOption {
+	return func(c *Client) {
+		c.HTTPClient = httpClient
+	}
+}
+
 // request makes an HTTP request to the Replicate API.
 func (r *Client) request(ctx context.Context, method, path string, body interface{}, out interface{}) error {
 	bodyBuffer := &bytes.Buffer{}
