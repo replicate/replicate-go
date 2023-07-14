@@ -129,6 +129,104 @@ func TestGetCollection(t *testing.T) {
 	assert.Empty(t, *collection.Models)
 }
 
+func TestGetModel(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/models/replicate/hello-world", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		model := replicate.Model{
+			Owner:          "replicate",
+			Name:           "hello-world",
+			Description:    "A tiny model that says hello",
+			Visibility:     "public",
+			GithubURL:      "https://github.com/replicate/cog-examples",
+			PaperURL:       "",
+			LicenseURL:     "",
+			RunCount:       12345,
+			CoverImageURL:  "",
+			DefaultExample: nil,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(model)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	model, err := client.GetModel(context.Background(), "replicate", "hello-world")
+	assert.NoError(t, err)
+	assert.Equal(t, "replicate", model.Owner)
+	assert.Equal(t, "hello-world", model.Name)
+}
+
+func TestListModelVersions(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/models/replicate/hello-world/versions", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		versionsPage := replicate.Page[replicate.ModelVersion]{
+			Results: []replicate.ModelVersion{
+				{ID: "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532"},
+				{ID: "b21cbe271e65c1718f2999b038c18b45e21e4fba961181fbfae9342fc53b9e05"},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(versionsPage)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	versionsPage, err := client.ListModelVersions(context.Background(), "replicate", "hello-world")
+	assert.NoError(t, err)
+	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", versionsPage.Results[0].ID)
+	assert.Equal(t, "b21cbe271e65c1718f2999b038c18b45e21e4fba961181fbfae9342fc53b9e05", versionsPage.Results[1].ID)
+}
+
+func TestGetModelVersion(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/models/replicate/hello-world/versions/version1", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		version := replicate.ModelVersion{
+			ID:            "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+			CreatedAt:     "2022-04-26T19:29:04.418669Z",
+			CogVersion:    "0.3.0",
+			OpenAPISchema: map[string]interface{}{},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(version)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	version, err := client.GetModelVersion(context.Background(), "replicate", "hello-world", "version1")
+	assert.NoError(t, err)
+	assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", version.ID)
+}
+
 func TestCreatePrediction(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
