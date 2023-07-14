@@ -18,8 +18,8 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-// New creates a new Replicate API client.
-func New(auth string, userAgent *string, baseURL *string) *Client {
+// NewClient creates a new Replicate API client.
+func NewClient(auth string, userAgent *string, baseURL *string) *Client {
 	client := &http.Client{}
 
 	if userAgent == nil {
