@@ -30,7 +30,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/replicate/replicate-go/pkg/replicate"
+	"github.com/replicate/replicate-go/replicate"
 )
 
 client := replicate.NewClient(os.Getenv("REPLICATE_API_TOKEN"))
