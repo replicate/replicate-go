@@ -1,10 +1,29 @@
-# Replicate Go Client
+# Replicate Go client
 
-🚧 WIP 🚧
+A Go client for [Replicate](https://replicate.com).
+It lets you run models from your Go code,
+and everything else you can do with
+[Replicate's HTTP API](https://replicate.com/docs/reference/http).
 
-This is a Go client for [Replicate](https://replicate.com).
+## Requirements
 
-## Example Usage
+- Go 1.20+
+
+## Installation
+
+Use `go get` to install the Replicate package:
+
+```console
+go get -u github.com/replicate/replicate-go@latest
+```
+
+Include the Replicate package in your project:
+
+```go
+import "github.com/replicate/replicate-go/pkg/replicate"
+```
+
+## Usage
 
 ```go
 import (
@@ -14,7 +33,7 @@ import (
 	"github.com/replicate/replicate-go/pkg/replicate"
 )
 
-client := replicate.New(os.Getenv("REPLICATE_API_TOKEN"))
+client := replicate.NewClient(os.Getenv("REPLICATE_API_TOKEN"))
 
 // https://replicate.com/stability-ai/stable-diffusion
 version := "db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf"
@@ -23,3 +42,8 @@ input := replicate.PredictionInput{
 }
 prediction, err := client.CreatePrediction(context.Background(), version, input)
 ```
+
+## License
+
+Replicate's Go client is released under the Apache 2.0 license.
+See [LICENSE.txt](LICENSE.txt)
