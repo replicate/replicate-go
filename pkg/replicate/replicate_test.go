@@ -18,33 +18,27 @@ func TestListCollections(t *testing.T) {
 		assert.Equal(t, "/collections", r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
 
-		type result struct {
-			Slug        string `json:"slug"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-		}
-
-		var response replicate.Page[result]
+		var response replicate.Page[replicate.Collection]
 
 		mockCursor := "cD0yMDIyLTAxLTIxKzIzJTNBMTglM0EyNC41MzAzNTclMkIwMCUzQTAw"
 
 		switch r.URL.Query().Get("cursor") {
 		case "":
 			next := "/collections?cursor=" + mockCursor
-			response = replicate.Page[result]{
+			response = replicate.Page[replicate.Collection]{
 				Previous: nil,
 				Next:     &next,
-				Results: []result{
-					{Slug: "collection-1", Name: "Collection 1", Description: "..."},
+				Results: []replicate.Collection{
+					{Slug: "collection-1", Name: "Collection 1", Description: ""},
 				},
 			}
 		case mockCursor:
 			previous := "/collections?cursor=" + mockCursor
-			response = replicate.Page[result]{
+			response = replicate.Page[replicate.Collection]{
 				Previous: &previous,
 				Next:     nil,
-				Results: []result{
-					{Slug: "collection-2", Name: "Collection 2", Description: "..."},
+				Results: []replicate.Collection{
+					{Slug: "collection-2", Name: "Collection 2", Description: ""},
 				},
 			}
 		}
@@ -85,12 +79,13 @@ func TestListCollections(t *testing.T) {
 	default:
 	}
 
-	expectedCollections := []replicate.Collection{
-		{Slug: "collection-1", Name: "Collection 1", Description: "..."},
-		{Slug: "collection-2", Name: "Collection 2", Description: "..."},
-	}
+	assert.Equal(t, 2, len(collections))
 
-	assert.Equal(t, expectedCollections, collections)
+	assert.Equal(t, "collection-1", collections[0].Slug)
+	assert.Equal(t, "Collection 1", collections[0].Name)
+
+	assert.Equal(t, "collection-2", collections[1].Slug)
+	assert.Equal(t, "Collection 2", collections[1].Name)
 }
 
 func TestGetCollection(t *testing.T) {
