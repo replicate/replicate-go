@@ -54,3 +54,13 @@ func (r *Client) CreatePrediction(ctx context.Context, version string, input Pre
 
 	return prediction, nil
 }
+
+// GetPrediction retrieves a prediction from the Replicate API by its ID.
+func (r *Client) GetPrediction(ctx context.Context, id string) (*Prediction, error) {
+	prediction := &Prediction{}
+	err := r.request(ctx, "GET", fmt.Sprintf("/predictions/%s", id), nil, prediction)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get prediction: %w", err)
+	}
+	return prediction, nil
+}
