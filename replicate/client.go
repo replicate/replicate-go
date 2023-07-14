@@ -10,23 +10,6 @@ import (
 	"strings"
 )
 
-// ClientOption is a function that modifies a Client.
-type ClientOption func(*Client)
-
-// WithUserAgent sets the User-Agent header on requests made by the client.
-func WithUserAgent(userAgent string) ClientOption {
-	return func(c *Client) {
-		c.UserAgent = &userAgent
-	}
-}
-
-// WithBaseURL sets the base URL for the client.
-func WithBaseURL(baseURL string) ClientOption {
-	return func(c *Client) {
-		c.BaseURL = baseURL
-	}
-}
-
 // Client is a client for the Replicate API.
 type Client struct {
 	Auth       string
@@ -34,6 +17,9 @@ type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
 }
+
+// ClientOption is a function that modifies a Client.
+type ClientOption func(*Client)
 
 // NewClient creates a new Replicate API client.
 func NewClient(auth string, options ...ClientOption) *Client {
@@ -53,6 +39,20 @@ func NewClient(auth string, options ...ClientOption) *Client {
 	}
 
 	return c
+}
+
+// WithUserAgent sets the User-Agent header on requests made by the client.
+func WithUserAgent(userAgent string) ClientOption {
+	return func(c *Client) {
+		c.UserAgent = &userAgent
+	}
+}
+
+// WithBaseURL sets the base URL for the client.
+func WithBaseURL(baseURL string) ClientOption {
+	return func(c *Client) {
+		c.BaseURL = baseURL
+	}
 }
 
 // request makes an HTTP request to the Replicate API.
