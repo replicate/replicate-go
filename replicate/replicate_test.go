@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/replicate/replicate-go/pkg/replicate"
+	"github.com/replicate/replicate-go/replicate"
 	"github.com/stretchr/testify/assert"
 )
 
