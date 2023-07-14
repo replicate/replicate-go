@@ -484,13 +484,14 @@ func TestCreateTraining(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	input := replicate.PredictionInput{"text": "Alice"}
+	input := replicate.TrainingInput{"text": "Alice"}
+	destination := "owner/new-model"
 	webhook := replicate.Webhook{
 		URL:    "https://example.com/webhook",
 		Events: []replicate.WebhookEventType{"start", "completed"},
 	}
 
-	training, err := client.CreateTraining(ctx, "owner", "model", "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", "owner/new-model", input, &webhook)
+	training, err := client.CreateTraining(ctx, "owner", "model", "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", destination, input, &webhook)
 	assert.NoError(t, err)
 	assert.Equal(t, "zz4ibbonubfz7carwiefibzgga", training.ID)
 	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", training.Version)
