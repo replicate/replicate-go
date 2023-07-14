@@ -389,3 +389,151 @@ func TestWait(t *testing.T) {
 	assert.Equal(t, replicate.PredictionInput{"text": "Alice"}, prediction.Input)
 	assert.Equal(t, map[string]interface{}{"text": "Hello, Alice"}, prediction.Output)
 }
+
+func TestCreateTraining(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/models/owner/model/versions/632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532/trainings", r.URL.Path)
+
+		training := &replicate.Training{
+			ID:        "zz4ibbonubfz7carwiefibzgga",
+			Version:   "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532",
+			Status:    replicate.Starting,
+			CreatedAt: "2023-03-28T21:47:58.566434Z",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		body, _ := json.Marshal(training)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	input := replicate.PredictionInput{"text": "Alice"}
+	webhook := replicate.Webhook{
+		URL:    "https://example.com/webhook",
+		Events: []replicate.WebhookEventType{"start", "completed"},
+	}
+
+	training, err := client.CreateTraining(ctx, "owner", "model", "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", "owner/new-model", input, &webhook)
+	assert.NoError(t, err)
+	assert.Equal(t, "zz4ibbonubfz7carwiefibzgga", training.ID)
+	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", training.Version)
+	assert.Equal(t, replicate.Starting, training.Status)
+}
+
+func TestGetTraining(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/trainings/zz4ibbonubfz7carwiefibzgga", r.URL.Path)
+
+		training := &replicate.Training{
+			ID:        "zz4ibbonubfz7carwiefibzgga",
+			Version:   "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532",
+			Status:    replicate.Succeeded,
+			CreatedAt: "2023-03-28T21:47:58.566434Z",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(training)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	training, err := client.GetTraining(ctx, "zz4ibbonubfz7carwiefibzgga")
+	assert.NoError(t, err)
+	assert.Equal(t, "zz4ibbonubfz7carwiefibzgga", training.ID)
+	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", training.Version)
+	assert.Equal(t, replicate.Succeeded, training.Status)
+}
+
+func TestCancelTraining(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/trainings/zz4ibbonubfz7carwiefibzgga/cancel", r.URL.Path)
+
+		training := &replicate.Training{
+			ID:        "zz4ibbonubfz7carwiefibzgga",
+			Version:   "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532",
+			Status:    replicate.Canceled,
+			CreatedAt: "2023-03-28T21:47:58.566434Z",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(training)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	training, err := client.CancelTraining(ctx, "zz4ibbonubfz7carwiefibzgga")
+	assert.NoError(t, err)
+	assert.Equal(t, "zz4ibbonubfz7carwiefibzgga", training.ID)
+	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", training.Version)
+	assert.Equal(t, replicate.Canceled, training.Status)
+}
+
+func TestListTrainings(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/trainings", r.URL.Path)
+
+		response := &replicate.Page[replicate.Training]{
+			Previous: nil,
+			Next:     nil,
+			Results: []replicate.Training{
+				{ID: "ufawqhfynnddngldkgtslldrkq"},
+				{ID: "rrr4z55ocneqzikepnug6xezpe"},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(response)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	page, err := client.ListTrainings(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, page.Results, 2)
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", page.Results[0].ID)
+	assert.Equal(t, "rrr4z55ocneqzikepnug6xezpe", page.Results[1].ID)
+}

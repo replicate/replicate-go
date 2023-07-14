@@ -7,7 +7,7 @@ import (
 
 type Training Prediction
 
-// CreatePrediction sends a request to the Replicate API to create a prediction.
+// CreateTraining sends a request to the Replicate API to create a new training.
 func (r *Client) CreateTraining(ctx context.Context, model_owner string, model_name string, version string, destination string, input PredictionInput, webhook *Webhook) (*Training, error) {
 	data := map[string]interface{}{
 		"version":     version,
@@ -28,4 +28,36 @@ func (r *Client) CreateTraining(ctx context.Context, model_owner string, model_n
 	}
 
 	return training, nil
+}
+
+// GetTraining sends a request to the Replicate API to get a training.
+func (r *Client) GetTraining(ctx context.Context, trainingID string) (*Training, error) {
+	training := &Training{}
+	err := r.request(ctx, "GET", fmt.Sprintf("/trainings/%s", trainingID), nil, training)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get training: %w", err)
+	}
+
+	return training, nil
+}
+
+// CancelTraining sends a request to the Replicate API to cancel a training.
+func (r *Client) CancelTraining(ctx context.Context, trainingID string) (*Training, error) {
+	training := &Training{}
+	err := r.request(ctx, "POST", fmt.Sprintf("/trainings/%s/cancel", trainingID), nil, training)
+	if err != nil {
+		return nil, fmt.Errorf("failed to cancel training: %w", err)
+	}
+
+	return training, nil
+}
+
+// ListTrainings returns a list of trainings.
+func (r *Client) ListTrainings(ctx context.Context) (*Page[Training], error) {
+	response := &Page[Training]{}
+	err := r.request(ctx, "GET", "/trainings", nil, response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list trainings: %w", err)
+	}
+	return response, nil
 }
