@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // Client represents a Replicate API client.
@@ -20,6 +21,7 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
+// Page represents a paginated response from Replicate's API.
 type Page[T any] struct {
 	Previous *string `json:"previous,omitempty"`
 	Next     *string `json:"next,omitempty"`
@@ -146,6 +148,57 @@ func Paginate[T any](ctx context.Context, client *Client, initialPage *Page[T]) 
 	}()
 
 	return resultsChan, errChan
+}
+
+// Wait for a prediction to finish.
+//
+// This function blocks until the prediction has finished, or the context is cancelled.
+// If the prediction has already finished, the prediction is returned immediately.
+// If the prediction has not finished after maxAttempts, an error is returned.
+// If interval is 0, the prediction is checked only once.
+// If interval is negative, an error is returned.
+// If maxAttempts is 0, there is no limit to the number of attempts.
+// If maxAttempts is negative, an error is returned.
+func (r *Client) Wait(ctx context.Context, prediction Prediction, interval time.Duration, maxAttempts int) (*Prediction, error) {
+	if prediction.Status.Terminated() {
+		return &prediction, nil
+	}
+
+	if interval < 0 {
+		return nil, errors.New("interval must be greater than or equal to zero")
+	}
+
+	if maxAttempts < 0 {
+		return nil, errors.New("maxAttempts must be greater than or equal to zero")
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	id := prediction.ID
+
+	attempts := 0
+	for {
+		select {
+		case <-ticker.C:
+			prediction, err := r.GetPrediction(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+
+			if prediction.Status.Terminated() {
+				return prediction, nil
+			}
+
+			attempts += 1
+			if maxAttempts > 0 && attempts > maxAttempts {
+				return nil, fmt.Errorf("prediction %s did not finish after %d attempts", id, maxAttempts)
+			}
+
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 }
 
 func (r *Client) Run(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook) (PredictionOutput, error) {

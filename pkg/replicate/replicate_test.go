@@ -199,10 +199,10 @@ func TestCreatePrediction(t *testing.T) {
 func TestGetPrediction(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, "/predictions/abc123", r.URL.Path)
+		assert.Equal(t, "/predictions/ufawqhfynnddngldkgtslldrkq", r.URL.Path)
 
 		prediction := &replicate.Prediction{
-			ID:        "abc123",
+			ID:        "ufawqhfynnddngldkgtslldrkq",
 			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 			Status:    replicate.Succeeded,
 			Input:     replicate.PredictionInput{"text": "Alice"},
@@ -227,9 +227,66 @@ func TestGetPrediction(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	prediction, err := client.GetPrediction(ctx, "abc123")
+	prediction, err := client.GetPrediction(ctx, "ufawqhfynnddngldkgtslldrkq")
 	assert.NoError(t, err)
-	assert.Equal(t, "abc123", prediction.ID)
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
+	assert.Equal(t, replicate.Succeeded, prediction.Status)
+	assert.Equal(t, replicate.PredictionInput{"text": "Alice"}, prediction.Input)
+	assert.Equal(t, map[string]interface{}{"text": "Hello, Alice"}, prediction.Output)
+}
+
+func TestWait(t *testing.T) {
+	statuses := []replicate.Status{replicate.Starting, replicate.Processing, replicate.Succeeded}
+	i := 0
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/predictions/ufawqhfynnddngldkgtslldrkq", r.URL.Path)
+
+		prediction := &replicate.Prediction{
+			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+			Status:    statuses[i],
+			Input:     replicate.PredictionInput{"text": "Alice"},
+			CreatedAt: "2022-04-26T22:13:06.224088Z",
+			UpdatedAt: "2022-04-26T22:13:06.224088Z",
+		}
+
+		if statuses[i] == replicate.Succeeded {
+			prediction.Output = map[string]interface{}{"text": "Hello, Alice"}
+		}
+
+		if i < len(statuses)-1 {
+			i++
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(prediction)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	prediction := &replicate.Prediction{
+		ID:        "ufawqhfynnddngldkgtslldrkq",
+		Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+		Status:    replicate.Starting,
+		Input:     replicate.PredictionInput{"text": "Alice"},
+		CreatedAt: "2022-04-26T22:13:06.224088Z",
+		UpdatedAt: "2022-04-26T22:13:06.224088Z",
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	prediction, err := client.Wait(ctx, *prediction, time.Millisecond*100, 5)
+	assert.NoError(t, err)
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
 	assert.Equal(t, replicate.Succeeded, prediction.Status)
 	assert.Equal(t, replicate.PredictionInput{"text": "Alice"}, prediction.Input)
 	assert.Equal(t, map[string]interface{}{"text": "Hello, Alice"}, prediction.Output)
