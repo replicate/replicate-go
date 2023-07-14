@@ -14,13 +14,13 @@ and everything else you can do with
 Use `go get` to install the Replicate package:
 
 ```console
-go get -u github.com/replicate/replicate-go/pkg/replicate
+go get -u github.com/replicate/replicate-go/replicate
 ```
 
 Include the Replicate package in your project:
 
 ```go
-import "github.com/replicate/replicate-go/pkg/replicate"
+import "github.com/replicate/replicate-go/replicate"
 ```
 
 ## Usage
