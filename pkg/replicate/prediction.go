@@ -57,6 +57,16 @@ func (r *Client) CreatePrediction(ctx context.Context, version string, input Pre
 	return prediction, nil
 }
 
+// ListPredictions returns a paginated list of predictions.
+func (r *Client) ListPredictions(ctx context.Context) (*Page[Prediction], error) {
+	response := &Page[Prediction]{}
+	err := r.request(ctx, "GET", "/predictions", nil, response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list predictions: %w", err)
+	}
+	return response, nil
+}
+
 // GetPrediction retrieves a prediction from the Replicate API by its ID.
 func (r *Client) GetPrediction(ctx context.Context, id string) (*Prediction, error) {
 	prediction := &Prediction{}

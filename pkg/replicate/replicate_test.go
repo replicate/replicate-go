@@ -289,6 +289,77 @@ func TestCreatePrediction(t *testing.T) {
 	assert.Equal(t, replicate.Starting, prediction.Status)
 }
 
+func TestListPredictions(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/predictions", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		var response replicate.Page[replicate.Prediction]
+
+		mockCursor := "cD0yMDIyLTAxLTIxKzIzJTNBMTglM0EyNC41MzAzNTclMkIwMCUzQTAw"
+
+		switch r.URL.Query().Get("cursor") {
+		case "":
+			next := "/predictions?cursor=" + mockCursor
+			response = replicate.Page[replicate.Prediction]{
+				Previous: nil,
+				Next:     &next,
+				Results: []replicate.Prediction{
+					{ID: "ufawqhfynnddngldkgtslldrkq"},
+				},
+			}
+		case mockCursor:
+			previous := "/predictions?cursor=" + mockCursor
+			response = replicate.Page[replicate.Prediction]{
+				Previous: &previous,
+				Next:     nil,
+				Results: []replicate.Prediction{
+					{ID: "rrr4z55ocneqzikepnug6xezpe"},
+				},
+			}
+		}
+
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client := &replicate.Client{
+		BaseURL:    mockServer.URL,
+		Auth:       "test-token",
+		HTTPClient: http.DefaultClient,
+	}
+
+	initialPage, err := client.ListPredictions(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resultsChan, errChan := replicate.Paginate(context.Background(), client, initialPage)
+
+	var predictions []replicate.Prediction
+	for results := range resultsChan {
+		predictions = append(predictions, results...)
+	}
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			t.Fatal(err)
+		}
+	default:
+	}
+
+	assert.Len(t, predictions, 2)
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", predictions[0].ID)
+	assert.Equal(t, "rrr4z55ocneqzikepnug6xezpe", predictions[1].ID)
+}
+
 func TestGetPrediction(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
