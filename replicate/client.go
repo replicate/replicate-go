@@ -10,7 +10,24 @@ import (
 	"strings"
 )
 
-// Client represents a Replicate API client.
+// ClientOption is a function that modifies a Client.
+type ClientOption func(*Client)
+
+// WithUserAgent sets the User-Agent header on requests made by the client.
+func WithUserAgent(userAgent string) ClientOption {
+	return func(c *Client) {
+		c.UserAgent = &userAgent
+	}
+}
+
+// WithBaseURL sets the base URL for the client.
+func WithBaseURL(baseURL string) ClientOption {
+	return func(c *Client) {
+		c.BaseURL = baseURL
+	}
+}
+
+// Client is a client for the Replicate API.
 type Client struct {
 	Auth       string
 	UserAgent  *string
@@ -19,30 +36,23 @@ type Client struct {
 }
 
 // NewClient creates a new Replicate API client.
-func NewClient(auth string) *Client {
-	return NewClientWithOptions(auth, nil, nil)
-}
-
-// NewClientWithOptions creates a new Replicate API client with a custom user agent and base URL.
-func NewClientWithOptions(auth string, userAgent *string, baseURL *string) *Client {
+func NewClient(auth string, options ...ClientOption) *Client {
 	client := &http.Client{}
+	defaultUserAgent := "replicate-go"
+	defaultBaseURL := "https://api.replicate.com/v1"
 
-	if userAgent == nil {
-		defaultUserAgent := "replicate-go"
-		userAgent = &defaultUserAgent
-	}
-
-	if baseURL == nil {
-		defaultBaseURL := "https://api.replicate.com/v1"
-		baseURL = &defaultBaseURL
-	}
-
-	return &Client{
+	c := &Client{
 		Auth:       auth,
-		UserAgent:  userAgent,
-		BaseURL:    *baseURL,
+		UserAgent:  &defaultUserAgent,
+		BaseURL:    defaultBaseURL,
 		HTTPClient: client,
 	}
+
+	for _, option := range options {
+		option(c)
+	}
+
+	return c
 }
 
 // request makes an HTTP request to the Replicate API.
