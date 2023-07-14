@@ -30,6 +30,7 @@ type Prediction struct {
 	WebhookEventsFilter []WebhookEventType `json:"webhook_events_filter,omitempty"`
 	CreatedAt           string             `json:"created_at"`
 	UpdatedAt           string             `json:"updated_at"`
+	StartedAt           *string            `json:"started_at,omitempty"`
 	CompletedAt         *string            `json:"completed_at,omitempty"`
 }
 
