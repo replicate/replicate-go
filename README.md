@@ -14,7 +14,7 @@ and everything else you can do with
 Use `go get` to install the Replicate package:
 
 ```console
-go get -u github.com/replicate/replicate-go@latest
+go get -u github.com/replicate/replicate-go/pkg/replicate
 ```
 
 Include the Replicate package in your project:
