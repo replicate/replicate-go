@@ -4,62 +4,54 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 )
 
+var (
+	ErrNoAuth = errors.New(`no auth token or token source provided -- perhaps you forgot to pass replicate.WithToken("...")`)
+
+	defaultUserAgent = "replicate/go" // TODO: embed version information
+	defaultBaseURL   = "https://api.replicate.com/v1"
+)
+
 // Client is a client for the Replicate API.
 type Client struct {
-	Auth       string
-	UserAgent  *string
-	BaseURL    string
-	HTTPClient *http.Client
+	options *options
+	c       *http.Client
 }
-
-// ClientOption is a function that modifies a Client.
-type ClientOption func(*Client)
 
 // NewClient creates a new Replicate API client.
-func NewClient(auth string, options ...ClientOption) *Client {
-	defaultUserAgent := "replicate-go"
-	defaultBaseURL := "https://api.replicate.com/v1"
-	defaultClient := http.DefaultClient
-
+func NewClient(opts ...Option) (*Client, error) {
 	c := &Client{
-		Auth:       auth,
-		UserAgent:  &defaultUserAgent,
-		BaseURL:    defaultBaseURL,
-		HTTPClient: defaultClient,
+		options: &options{
+			userAgent:  &defaultUserAgent,
+			baseURL:    defaultBaseURL,
+			httpClient: http.DefaultClient,
+		},
 	}
 
-	for _, option := range options {
-		option(c)
+	var errs []error
+	for _, option := range opts {
+		err := option(c.options)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 
-	return c
-}
-
-// WithUserAgent sets the User-Agent header on requests made by the client.
-func WithUserAgent(userAgent string) ClientOption {
-	return func(c *Client) {
-		c.UserAgent = &userAgent
+	if c.options.auth == "" {
+		return nil, ErrNoAuth
 	}
-}
 
-// WithBaseURL sets the base URL for the client.
-func WithBaseURL(baseURL string) ClientOption {
-	return func(c *Client) {
-		c.BaseURL = baseURL
-	}
-}
+	c.c = c.options.httpClient
 
-// WithHTTPClient sets the HTTP client used by the client.
-func WithHTTPClient(httpClient *http.Client) ClientOption {
-	return func(c *Client) {
-		c.HTTPClient = httpClient
-	}
+	return c, nil
 }
 
 // request makes an HTTP request to the Replicate API.
@@ -73,19 +65,19 @@ func (r *Client) request(ctx context.Context, method, path string, body interfac
 		bodyBuffer = bytes.NewBuffer(bodyBytes)
 	}
 
-	url := constructURL(r.BaseURL, path)
+	url := constructURL(r.options.baseURL, path)
 	request, err := http.NewRequestWithContext(ctx, method, url, bodyBuffer)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", fmt.Sprintf("Token %s", r.Auth))
-	if r.UserAgent != nil {
-		request.Header.Set("User-Agent", *r.UserAgent)
+	request.Header.Set("Authorization", fmt.Sprintf("Token %s", r.options.auth))
+	if r.options.userAgent != nil {
+		request.Header.Set("User-Agent", *r.options.userAgent)
 	}
 
-	response, err := r.HTTPClient.Do(request)
+	response, err := r.c.Do(request)
 	if err != nil {
 		return fmt.Errorf("failed to make request: %w", err)
 	}
