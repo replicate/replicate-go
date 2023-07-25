@@ -83,7 +83,7 @@ func (r *Client) GetPrediction(ctx context.Context, id string) (*Prediction, err
 // This function blocks until the prediction has finished, or the context is cancelled.
 // If the prediction has already finished, the prediction is returned immediately.
 // If the prediction has not finished after maxAttempts, an error is returned.
-// If interval is 0, the prediction is checked only once.
+// If interval is 1, the prediction is checked only once.
 // If interval is negative, an error is returned.
 // If maxAttempts is 0, there is no limit to the number of attempts.
 // If maxAttempts is negative, an error is returned.
@@ -92,8 +92,8 @@ func (r *Client) Wait(ctx context.Context, prediction Prediction, interval time.
 		return &prediction, nil
 	}
 
-	if interval < 0 {
-		return nil, errors.New("interval must be greater than or equal to zero")
+	if interval <= 0 {
+		return nil, errors.New("interval must be greater than zero")
 	}
 
 	if maxAttempts < 0 {
