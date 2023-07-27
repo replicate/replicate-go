@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"time"
 )
+
+const defaultPollingInterval = 1 * time.Second
 
 func (r *Client) Run(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook) (PredictionOutput, error) {
 	namePattern := `[a-zA-Z0-9]+(?:(?:[._]|__|[-]*)[a-zA-Z0-9]+)*`
@@ -30,7 +33,7 @@ func (r *Client) Run(ctx context.Context, identifier string, input PredictionInp
 		return nil, err
 	}
 
-	prediction, err = r.Wait(ctx, *prediction, 0, 0)
+	prediction, err = r.Wait(ctx, *prediction, defaultPollingInterval, 0)
 
 	return prediction.Output, err
 }
