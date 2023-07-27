@@ -19,6 +19,12 @@ var (
 	defaultBaseURL   = "https://api.replicate.com/v1"
 )
 
+// Client is a client for the Replicate API.
+type Client struct {
+	options *options
+	c       *http.Client
+}
+
 type options struct {
 	auth       string
 	baseURL    string
@@ -26,17 +32,11 @@ type options struct {
 	userAgent  *string
 }
 
-// Option is a function that modifies an options struct.
-type Option func(*options) error
-
-// Client is a client for the Replicate API.
-type Client struct {
-	options *options
-	c       *http.Client
-}
+// ClientOption is a function that modifies an options struct.
+type ClientOption func(*options) error
 
 // NewClient creates a new Replicate API client.
-func NewClient(opts ...Option) (*Client, error) {
+func NewClient(opts ...ClientOption) (*Client, error) {
 	c := &Client{
 		options: &options{
 			userAgent:  &defaultUserAgent,
@@ -66,7 +66,7 @@ func NewClient(opts ...Option) (*Client, error) {
 }
 
 // WithToken sets the auth token used by the client.
-func WithToken(token string) Option {
+func WithToken(token string) ClientOption {
 	return func(o *options) error {
 		o.auth = token
 		return nil
@@ -75,7 +75,7 @@ func WithToken(token string) Option {
 
 // WithTokenFromEnv configures the client to use the auth token provided in the
 // REPLICATE_API_TOKEN environment variable.
-func WithTokenFromEnv() Option {
+func WithTokenFromEnv() ClientOption {
 	return func(o *options) error {
 		token, ok := os.LookupEnv("REPLICATE_API_TOKEN")
 		if !ok {
@@ -90,7 +90,7 @@ func WithTokenFromEnv() Option {
 }
 
 // WithUserAgent sets the User-Agent header on requests made by the client.
-func WithUserAgent(userAgent string) Option {
+func WithUserAgent(userAgent string) ClientOption {
 	return func(o *options) error {
 		o.userAgent = &userAgent
 		return nil
@@ -98,7 +98,7 @@ func WithUserAgent(userAgent string) Option {
 }
 
 // WithBaseURL sets the base URL for the client.
-func WithBaseURL(baseURL string) Option {
+func WithBaseURL(baseURL string) ClientOption {
 	return func(o *options) error {
 		o.baseURL = baseURL
 		return nil
@@ -106,7 +106,7 @@ func WithBaseURL(baseURL string) Option {
 }
 
 // WithHTTPClient sets the HTTP client used by the client.
-func WithHTTPClient(httpClient *http.Client) Option {
+func WithHTTPClient(httpClient *http.Client) ClientOption {
 	return func(o *options) error {
 		o.httpClient = httpClient
 		return nil
