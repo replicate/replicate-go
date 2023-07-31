@@ -450,6 +450,10 @@ func TestCreateTraining(t *testing.T) {
 			Version:   "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532",
 			Status:    replicate.Starting,
 			CreatedAt: "2023-03-28T21:47:58.566434Z",
+			URLs: map[string]string{
+				"get":    "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga",
+				"cancel": "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga/cancel",
+			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -478,6 +482,8 @@ func TestCreateTraining(t *testing.T) {
 	assert.Equal(t, "zz4ibbonubfz7carwiefibzgga", training.ID)
 	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", training.Version)
 	assert.Equal(t, replicate.Starting, training.Status)
+	assert.Equal(t, "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga", training.URLs["get"])
+	assert.Equal(t, "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga/cancel", training.URLs["cancel"])
 }
 
 func TestGetTraining(t *testing.T) {
