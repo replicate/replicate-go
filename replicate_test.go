@@ -245,6 +245,11 @@ func TestCreatePrediction(t *testing.T) {
 			Logs:      nil,
 			Metrics:   nil,
 			CreatedAt: "2022-04-26T22:13:06.224088Z",
+			URLs: map[string]string{
+				"get":    "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq",
+				"cancel": "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel",
+				"stream": "https://streaming.api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq",
+			},
 		}
 		responseBytes, err := json.Marshal(response)
 		if err != nil {
@@ -275,6 +280,9 @@ func TestCreatePrediction(t *testing.T) {
 	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
 	assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", prediction.Version)
 	assert.Equal(t, replicate.Starting, prediction.Status)
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["get"])
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel", prediction.URLs["cancel"])
+	assert.Equal(t, "https://streaming.api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["stream"])
 }
 
 func TestListPredictions(t *testing.T) {
