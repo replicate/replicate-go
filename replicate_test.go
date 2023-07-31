@@ -357,6 +357,10 @@ func TestGetPrediction(t *testing.T) {
 			Input:     replicate.PredictionInput{"text": "Alice"},
 			Output:    map[string]interface{}{"text": "Hello, Alice"},
 			CreatedAt: "2022-04-26T22:13:06.224088Z",
+			URLs: map[string]string{
+				"get":    "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq",
+				"cancel": "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel",
+			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -379,6 +383,8 @@ func TestGetPrediction(t *testing.T) {
 	assert.Equal(t, replicate.Succeeded, prediction.Status)
 	assert.Equal(t, replicate.PredictionInput{"text": "Alice"}, prediction.Input)
 	assert.Equal(t, map[string]interface{}{"text": "Hello, Alice"}, prediction.Output)
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["get"])
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel", prediction.URLs["cancel"])
 }
 
 func TestWait(t *testing.T) {
@@ -444,6 +450,10 @@ func TestCreateTraining(t *testing.T) {
 			Version:   "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532",
 			Status:    replicate.Starting,
 			CreatedAt: "2023-03-28T21:47:58.566434Z",
+			URLs: map[string]string{
+				"get":    "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga",
+				"cancel": "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga/cancel",
+			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -472,6 +482,8 @@ func TestCreateTraining(t *testing.T) {
 	assert.Equal(t, "zz4ibbonubfz7carwiefibzgga", training.ID)
 	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", training.Version)
 	assert.Equal(t, replicate.Starting, training.Status)
+	assert.Equal(t, "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga", training.URLs["get"])
+	assert.Equal(t, "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga/cancel", training.URLs["cancel"])
 }
 
 func TestGetTraining(t *testing.T) {
