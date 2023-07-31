@@ -38,7 +38,7 @@ type PredictionInput map[string]interface{}
 type PredictionOutput interface{}
 
 // CreatePrediction sends a request to the Replicate API to create a prediction.
-func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook) (*Prediction, error) {
+func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
 	data := map[string]interface{}{
 		"version": version,
 		"input":   input,
@@ -47,6 +47,10 @@ func (r *Client) CreatePrediction(ctx context.Context, version string, input Pre
 	if webhook != nil {
 		data["webhook"] = webhook.URL
 		data["webhook_events_filter"] = webhook.Events
+	}
+
+	if stream {
+		data["stream"] = true
 	}
 
 	prediction := &Prediction{}
