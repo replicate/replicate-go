@@ -233,6 +233,7 @@ func TestCreatePrediction(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
 		assert.Equal(t, "https://example.com/webhook", requestBody["webhook"])
 		assert.Equal(t, []interface{}{"start", "completed"}, requestBody["webhook_events_filter"])
+		assert.Equal(t, true, requestBody["stream"])
 
 		response := replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
@@ -266,7 +267,7 @@ func TestCreatePrediction(t *testing.T) {
 	}
 
 	version := "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
-	prediction, err := client.CreatePrediction(context.Background(), version, input, &webhook)
+	prediction, err := client.CreatePrediction(context.Background(), version, input, &webhook, true)
 	if err != nil {
 		t.Fatal(err)
 	}

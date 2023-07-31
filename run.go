@@ -28,7 +28,7 @@ func (r *Client) Run(ctx context.Context, identifier string, input PredictionInp
 		}
 	}
 
-	prediction, err := r.CreatePrediction(ctx, version, input, webhook)
+	prediction, err := r.CreatePrediction(ctx, version, input, webhook, false)
 	if err != nil {
 		return nil, err
 	}
