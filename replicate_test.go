@@ -357,6 +357,10 @@ func TestGetPrediction(t *testing.T) {
 			Input:     replicate.PredictionInput{"text": "Alice"},
 			Output:    map[string]interface{}{"text": "Hello, Alice"},
 			CreatedAt: "2022-04-26T22:13:06.224088Z",
+			URLs: map[string]string{
+				"get":    "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq",
+				"cancel": "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel",
+			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -379,6 +383,8 @@ func TestGetPrediction(t *testing.T) {
 	assert.Equal(t, replicate.Succeeded, prediction.Status)
 	assert.Equal(t, replicate.PredictionInput{"text": "Alice"}, prediction.Input)
 	assert.Equal(t, map[string]interface{}{"text": "Hello, Alice"}, prediction.Output)
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["get"])
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel", prediction.URLs["cancel"])
 }
 
 func TestWait(t *testing.T) {

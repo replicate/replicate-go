@@ -28,6 +28,7 @@ type Prediction struct {
 	} `json:"metrics,omitempty"`
 	Webhook             *string            `json:"webhook,omitempty"`
 	WebhookEventsFilter []WebhookEventType `json:"webhook_events_filter,omitempty"`
+	URLs                map[string]string  `json:"urls,omitempty"`
 	CreatedAt           string             `json:"created_at"`
 	StartedAt           *string            `json:"started_at,omitempty"`
 	CompletedAt         *string            `json:"completed_at,omitempty"`
