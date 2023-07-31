@@ -244,7 +244,6 @@ func TestCreatePrediction(t *testing.T) {
 			Logs:      nil,
 			Metrics:   nil,
 			CreatedAt: "2022-04-26T22:13:06.224088Z",
-			UpdatedAt: "2022-04-26T22:13:06.224088Z",
 		}
 		responseBytes, err := json.Marshal(response)
 		if err != nil {
@@ -358,7 +357,6 @@ func TestGetPrediction(t *testing.T) {
 			Input:     replicate.PredictionInput{"text": "Alice"},
 			Output:    map[string]interface{}{"text": "Hello, Alice"},
 			CreatedAt: "2022-04-26T22:13:06.224088Z",
-			UpdatedAt: "2022-04-26T22:13:06.224088Z",
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -396,7 +394,6 @@ func TestWait(t *testing.T) {
 			Status:    statuses[i],
 			Input:     replicate.PredictionInput{"text": "Alice"},
 			CreatedAt: "2022-04-26T22:13:06.224088Z",
-			UpdatedAt: "2022-04-26T22:13:06.224088Z",
 		}
 
 		if statuses[i] == replicate.Succeeded {
@@ -424,7 +421,6 @@ func TestWait(t *testing.T) {
 		Status:    replicate.Starting,
 		Input:     replicate.PredictionInput{"text": "Alice"},
 		CreatedAt: "2022-04-26T22:13:06.224088Z",
-		UpdatedAt: "2022-04-26T22:13:06.224088Z",
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
