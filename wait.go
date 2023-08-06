@@ -2,7 +2,6 @@ package replicate
 
 import (
 	"context"
-	"fmt"
 	"time"
 )
 
@@ -11,8 +10,7 @@ const (
 )
 
 type waitOptions struct {
-	interval    time.Duration
-	maxAttempts *int
+	interval time.Duration
 }
 
 // WaitOption is a function that modifies an options struct.
@@ -26,22 +24,11 @@ func WithPollingInterval(interval time.Duration) WaitOption {
 	}
 }
 
-// WithMaxAttempts sets the maximum number of attempts.
-func WithMaxAttempts(maxAttempts int) WaitOption {
-	return func(o *waitOptions) error {
-		o.maxAttempts = &maxAttempts
-		return nil
-	}
-}
-
 // Wait for a prediction to finish.
 //
 // This function blocks until the prediction has finished, or the context is cancelled.
 // If the prediction has already finished, the function returns immediately.
-// If the prediction has not finished after maxAttempts, an error is returned.
-// If interval is less than or equal to zero, an error is returned.
-// If maxAttempts is less than zero, an error is returned.
-// If maxAttempts is equal to zero, there is no limit to the number of attempts.
+// If polling interval is less than or equal to zero, an error is returned.
 func (r *Client) Wait(ctx context.Context, prediction *Prediction, opts ...WaitOption) error {
 	predChan, errChan := r.WaitAsync(ctx, prediction, opts...)
 
@@ -105,11 +92,6 @@ func (r *Client) WaitAsync(ctx context.Context, prediction *Prediction, opts ...
 				}
 
 				attempts += 1
-				if options.maxAttempts != nil && attempts >= *options.maxAttempts {
-					errChan <- fmt.Errorf("prediction %s did not finish after %d attempts", id, *options.maxAttempts)
-					return
-				}
-
 			case <-ctx.Done():
 				errChan <- ctx.Err()
 				return
