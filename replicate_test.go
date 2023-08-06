@@ -433,6 +433,7 @@ func TestGetPrediction(t *testing.T) {
 
 func TestWait(t *testing.T) {
 	statuses := []replicate.Status{replicate.Starting, replicate.Processing, replicate.Succeeded}
+
 	i := 0
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
@@ -478,7 +479,7 @@ func TestWait(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	prediction, err = client.Wait(ctx, *prediction, time.Millisecond*100, 5)
+	err = client.Wait(ctx, prediction, replicate.WithInterval(1*time.Nanosecond))
 	assert.NoError(t, err)
 	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
 	assert.Equal(t, replicate.Succeeded, prediction.Status)
