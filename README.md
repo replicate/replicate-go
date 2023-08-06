@@ -33,7 +33,8 @@ import (
 	"github.com/replicate/replicate-go"
 )
 
-client := replicate.NewClient(os.Getenv("REPLICATE_API_TOKEN"))
+// You can also provide a token directly with `replicate.NewClient(replicate.WithToken("r8_..."))`
+client := replicate.NewClient(replicate.WithTokenFromEnv())
 
 // https://replicate.com/stability-ai/stable-diffusion
 version := "db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf"

@@ -11,7 +11,26 @@ import (
 
 	"github.com/replicate/replicate-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestNewClientNoAuth(t *testing.T) {
+	_, err := replicate.NewClient()
+
+	assert.ErrorIs(t, err, replicate.ErrNoAuth)
+}
+
+func TestNewClientBlankAuthTokenFromEnv(t *testing.T) {
+	t.Setenv("REPLICATE_API_TOKEN", "")
+	_, err := replicate.NewClient(replicate.WithTokenFromEnv())
+	require.ErrorContains(t, err, "REPLICATE_API_TOKEN")
+}
+
+func TestNewClientAuthTokenFromEnv(t *testing.T) {
+	t.Setenv("REPLICATE_API_TOKEN", "test-token")
+	_, err := replicate.NewClient(replicate.WithTokenFromEnv())
+	require.NoError(t, err)
+}
 
 func TestListCollections(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -53,9 +72,11 @@ func TestListCollections(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	initialPage, err := client.ListCollections(context.Background())
 	if err != nil {
@@ -105,9 +126,11 @@ func TestGetCollection(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -145,9 +168,11 @@ func TestGetModel(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	model, err := client.GetModel(context.Background(), "replicate", "hello-world")
 	assert.NoError(t, err)
@@ -174,9 +199,11 @@ func TestListModelVersions(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	versionsPage, err := client.ListModelVersions(context.Background(), "replicate", "hello-world")
 	assert.NoError(t, err)
@@ -203,9 +230,11 @@ func TestGetModelVersion(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	version, err := client.GetModelVersion(context.Background(), "replicate", "hello-world", "version1")
 	assert.NoError(t, err)
@@ -261,9 +290,11 @@ func TestCreatePrediction(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	input := replicate.PredictionInput{"text": "Alice"}
 	webhook := replicate.Webhook{
@@ -325,9 +356,11 @@ func TestListPredictions(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	initialPage, err := client.ListPredictions(context.Background())
 	if err != nil {
@@ -379,9 +412,11 @@ func TestGetPrediction(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -426,9 +461,11 @@ func TestWait(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	prediction := &replicate.Prediction{
 		ID:        "ufawqhfynnddngldkgtslldrkq",
@@ -441,7 +478,7 @@ func TestWait(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	prediction, err := client.Wait(ctx, *prediction, time.Millisecond*100, 5)
+	prediction, err = client.Wait(ctx, *prediction, time.Millisecond*100, 5)
 	assert.NoError(t, err)
 	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
 	assert.Equal(t, replicate.Succeeded, prediction.Status)
@@ -472,9 +509,11 @@ func TestCreateTraining(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -514,9 +553,11 @@ func TestGetTraining(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -547,9 +588,11 @@ func TestCancelTraining(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -582,9 +625,11 @@ func TestListTrainings(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	client := replicate.NewClient("test-token",
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
