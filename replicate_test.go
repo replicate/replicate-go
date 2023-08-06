@@ -479,7 +479,7 @@ func TestWait(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err = client.Wait(ctx, prediction, replicate.WithInterval(1*time.Nanosecond))
+	err = client.Wait(ctx, prediction, replicate.WithPollingInterval(1*time.Nanosecond))
 	assert.NoError(t, err)
 	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
 	assert.Equal(t, replicate.Succeeded, prediction.Status)
@@ -535,7 +535,7 @@ func TestWaitAsync(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	predChan, errChan := client.WaitAsync(ctx, prediction, replicate.WithInterval(1*time.Nanosecond))
+	predChan, errChan := client.WaitAsync(ctx, prediction, replicate.WithPollingInterval(1*time.Nanosecond))
 	var lastStatus replicate.Status
 	for pred := range predChan {
 		lastStatus = pred.Status
