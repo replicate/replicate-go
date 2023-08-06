@@ -23,11 +23,11 @@ var (
 
 // Client is a client for the Replicate API.
 type Client struct {
-	options *options
+	options *clientOptions
 	c       *http.Client
 }
 
-type options struct {
+type clientOptions struct {
 	auth       string
 	baseURL    string
 	httpClient *http.Client
@@ -35,12 +35,12 @@ type options struct {
 }
 
 // ClientOption is a function that modifies an options struct.
-type ClientOption func(*options) error
+type ClientOption func(*clientOptions) error
 
 // NewClient creates a new Replicate API client.
 func NewClient(opts ...ClientOption) (*Client, error) {
 	c := &Client{
-		options: &options{
+		options: &clientOptions{
 			userAgent:  &defaultUserAgent,
 			baseURL:    defaultBaseURL,
 			httpClient: http.DefaultClient,
@@ -69,7 +69,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 
 // WithToken sets the auth token used by the client.
 func WithToken(token string) ClientOption {
-	return func(o *options) error {
+	return func(o *clientOptions) error {
 		o.auth = token
 		return nil
 	}
@@ -78,7 +78,7 @@ func WithToken(token string) ClientOption {
 // WithTokenFromEnv configures the client to use the auth token provided in the
 // REPLICATE_API_TOKEN environment variable.
 func WithTokenFromEnv() ClientOption {
-	return func(o *options) error {
+	return func(o *clientOptions) error {
 		token, ok := os.LookupEnv(envAuthToken)
 		if !ok {
 			return fmt.Errorf("%s environment variable not set", envAuthToken)
@@ -93,7 +93,7 @@ func WithTokenFromEnv() ClientOption {
 
 // WithUserAgent sets the User-Agent header on requests made by the client.
 func WithUserAgent(userAgent string) ClientOption {
-	return func(o *options) error {
+	return func(o *clientOptions) error {
 		o.userAgent = &userAgent
 		return nil
 	}
@@ -101,7 +101,7 @@ func WithUserAgent(userAgent string) ClientOption {
 
 // WithBaseURL sets the base URL for the client.
 func WithBaseURL(baseURL string) ClientOption {
-	return func(o *options) error {
+	return func(o *clientOptions) error {
 		o.baseURL = baseURL
 		return nil
 	}
@@ -109,7 +109,7 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // WithHTTPClient sets the HTTP client used by the client.
 func WithHTTPClient(httpClient *http.Client) ClientOption {
-	return func(o *options) error {
+	return func(o *clientOptions) error {
 		o.httpClient = httpClient
 		return nil
 	}

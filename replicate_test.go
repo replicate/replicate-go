@@ -433,6 +433,7 @@ func TestGetPrediction(t *testing.T) {
 
 func TestWait(t *testing.T) {
 	statuses := []replicate.Status{replicate.Starting, replicate.Processing, replicate.Succeeded}
+
 	i := 0
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
@@ -478,12 +479,79 @@ func TestWait(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	prediction, err = client.Wait(ctx, *prediction, time.Millisecond*100, 5)
+	err = client.Wait(ctx, prediction, replicate.WithInterval(1*time.Nanosecond))
 	assert.NoError(t, err)
 	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
 	assert.Equal(t, replicate.Succeeded, prediction.Status)
 	assert.Equal(t, replicate.PredictionInput{"text": "Alice"}, prediction.Input)
 	assert.Equal(t, map[string]interface{}{"text": "Hello, Alice"}, prediction.Output)
+}
+
+func TestWaitAsync(t *testing.T) {
+	statuses := []replicate.Status{replicate.Starting, replicate.Processing, replicate.Succeeded}
+
+	i := 0
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/predictions/ufawqhfynnddngldkgtslldrkq", r.URL.Path)
+
+		prediction := &replicate.Prediction{
+			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+			Status:    statuses[i],
+			Input:     replicate.PredictionInput{"text": "Alice"},
+			CreatedAt: "2022-04-26T22:13:06.224088Z",
+		}
+
+		if statuses[i] == replicate.Succeeded {
+			prediction.Output = map[string]interface{}{"text": "Hello, Alice"}
+		}
+
+		if i < len(statuses)-1 {
+			i++
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(prediction)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	prediction := &replicate.Prediction{
+		ID:        "ufawqhfynnddngldkgtslldrkq",
+		Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+		Status:    replicate.Starting,
+		Input:     replicate.PredictionInput{"text": "Alice"},
+		CreatedAt: "2022-04-26T22:13:06.224088Z",
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	predChan, errChan := client.WaitAsync(ctx, prediction, replicate.WithInterval(1*time.Nanosecond))
+	var lastStatus replicate.Status
+	for pred := range predChan {
+		lastStatus = pred.Status
+		if pred.Status == replicate.Succeeded {
+			assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", pred.ID)
+			assert.Equal(t, replicate.PredictionInput{"text": "Alice"}, pred.Input)
+			assert.Equal(t, map[string]interface{}{"text": "Hello, Alice"}, pred.Output)
+			break
+		}
+	}
+
+	if err := <-errChan; err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, replicate.Succeeded, lastStatus)
 }
 
 func TestCreateTraining(t *testing.T) {
