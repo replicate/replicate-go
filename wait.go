@@ -43,45 +43,14 @@ func WithMaxAttempts(maxAttempts int) WaitOption {
 // If maxAttempts is less than zero, an error is returned.
 // If maxAttempts is equal to zero, there is no limit to the number of attempts.
 func (r *Client) Wait(ctx context.Context, prediction *Prediction, opts ...WaitOption) error {
-	options := &waitOptions{
-		interval: defaultInterval,
-	}
+	predChan, errChan := r.WaitAsync(ctx, prediction, opts...)
 
-	for _, option := range opts {
-		err := option(options)
-		if err != nil {
-			return err
+	go func() {
+		for range predChan {
 		}
-	}
+	}()
 
-	ticker := time.NewTicker(options.interval)
-	defer ticker.Stop()
-
-	id := prediction.ID
-	attempts := 0
-	for {
-		select {
-		case <-ticker.C:
-			updatedPrediction, err := r.GetPrediction(ctx, id)
-			if err != nil {
-				return err
-			}
-
-			*prediction = *updatedPrediction
-
-			if prediction.Status.Terminated() {
-				return nil
-			}
-
-			attempts += 1
-			if options.maxAttempts != nil && attempts >= *options.maxAttempts {
-				return fmt.Errorf("prediction %s did not finish after %d attempts", id, *options.maxAttempts)
-			}
-
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
+	return <-errChan
 }
 
 // WaitAsync returns a channel that receives the prediction as it progresses.
@@ -132,6 +101,7 @@ func (r *Client) WaitAsync(ctx context.Context, prediction *Prediction, opts ...
 				predChan <- updatedPrediction
 
 				if prediction.Status.Terminated() {
+					errChan <- nil
 					return
 				}
 
