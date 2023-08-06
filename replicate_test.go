@@ -20,6 +20,18 @@ func TestNewClientNoAuth(t *testing.T) {
 	assert.ErrorIs(t, err, replicate.ErrNoAuth)
 }
 
+func TestNewClientBlankAuthTokenFromEnv(t *testing.T) {
+	t.Setenv("REPLICATE_API_TOKEN", "")
+	_, err := replicate.NewClient(replicate.WithTokenFromEnv())
+	require.ErrorContains(t, err, "REPLICATE_API_TOKEN")
+}
+
+func TestNewClientAuthTokenFromEnv(t *testing.T) {
+	t.Setenv("REPLICATE_API_TOKEN", "test-token")
+	_, err := replicate.NewClient(replicate.WithTokenFromEnv())
+	require.NoError(t, err)
+}
+
 func TestListCollections(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/collections", r.URL.Path)

@@ -13,10 +13,12 @@ import (
 )
 
 var (
-	ErrNoAuth = errors.New(`no auth token or token source provided -- perhaps you forgot to pass replicate.WithToken("...")`)
+	envAuthToken = "REPLICATE_API_TOKEN"
 
 	defaultUserAgent = "replicate/go" // TODO: embed version information
 	defaultBaseURL   = "https://api.replicate.com/v1"
+
+	ErrNoAuth = errors.New(`no auth token or token source provided -- perhaps you forgot to pass replicate.WithToken("...")`)
 )
 
 // Client is a client for the Replicate API.
@@ -77,12 +79,12 @@ func WithToken(token string) ClientOption {
 // REPLICATE_API_TOKEN environment variable.
 func WithTokenFromEnv() ClientOption {
 	return func(o *options) error {
-		token, ok := os.LookupEnv("REPLICATE_API_TOKEN")
+		token, ok := os.LookupEnv(envAuthToken)
 		if !ok {
-			return fmt.Errorf("REPLICATE_API_TOKEN environment variable not set")
+			return fmt.Errorf("%s environment variable not set", envAuthToken)
 		}
 		if token == "" {
-			return fmt.Errorf("REPLICATE_API_TOKEN environment variable is empty")
+			return fmt.Errorf("%s environment variable is empty", envAuthToken)
 		}
 		o.auth = token
 		return nil
