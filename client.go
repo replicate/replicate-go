@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -17,6 +19,13 @@ var (
 
 	defaultUserAgent = "replicate/go" // TODO: embed version information
 	defaultBaseURL   = "https://api.replicate.com/v1"
+
+	defaultMaxRetries = 5
+	defaultBackoff    = &ExponentialBackoff{
+		Multiplier: 2,
+		Base:       500 * time.Millisecond,
+		Jitter:     50 * time.Millisecond,
+	}
 
 	ErrNoAuth = errors.New(`no auth token or token source provided -- perhaps you forgot to pass replicate.WithToken("...")`)
 )
@@ -27,11 +36,17 @@ type Client struct {
 	c       *http.Client
 }
 
+type retryPolicy struct {
+	maxRetries int
+	backoff    Backoff
+}
+
 type clientOptions struct {
-	auth       string
-	baseURL    string
-	httpClient *http.Client
-	userAgent  *string
+	auth        string
+	baseURL     string
+	httpClient  *http.Client
+	retryPolicy *retryPolicy
+	userAgent   *string
 }
 
 // ClientOption is a function that modifies an options struct.
@@ -41,8 +56,12 @@ type ClientOption func(*clientOptions) error
 func NewClient(opts ...ClientOption) (*Client, error) {
 	c := &Client{
 		options: &clientOptions{
-			userAgent:  &defaultUserAgent,
-			baseURL:    defaultBaseURL,
+			userAgent: &defaultUserAgent,
+			baseURL:   defaultBaseURL,
+			retryPolicy: &retryPolicy{
+				maxRetries: defaultMaxRetries,
+				backoff:    defaultBackoff,
+			},
 			httpClient: http.DefaultClient,
 		},
 	}
@@ -115,6 +134,17 @@ func WithHTTPClient(httpClient *http.Client) ClientOption {
 	}
 }
 
+// WithRetryPolicy sets the retry policy used by the client.
+func WithRetryPolicy(maxRetries int, backoff Backoff) ClientOption {
+	return func(o *clientOptions) error {
+		o.retryPolicy = &retryPolicy{
+			maxRetries: maxRetries,
+			backoff:    backoff,
+		}
+		return nil
+	}
+}
+
 // request makes an HTTP request to the Replicate API.
 func (r *Client) request(ctx context.Context, method, path string, body interface{}, out interface{}) error {
 	bodyBuffer := &bytes.Buffer{}
@@ -138,33 +168,77 @@ func (r *Client) request(ctx context.Context, method, path string, body interfac
 		request.Header.Set("User-Agent", *r.options.userAgent)
 	}
 
-	response, err := r.c.Do(request)
-	if err != nil {
-		return fmt.Errorf("failed to make request: %w", err)
-	}
-	defer response.Body.Close()
+	maxRetries := r.options.retryPolicy.maxRetries
+	backoff := r.options.retryPolicy.backoff
 
-	responseBytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusBadRequest {
-		var apiError APIError
-		err := json.Unmarshal(responseBytes, &apiError)
+	var apiError *APIError
+	attempts := 0
+	for ok := true; ok; ok = attempts < maxRetries {
+		response, err := r.c.Do(request)
 		if err != nil {
-			return fmt.Errorf("unable to parse API error: %v", err)
+			return fmt.Errorf("failed to make request: %w", err)
 		}
+		defer response.Body.Close()
+
+		responseBytes, err := io.ReadAll(response.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response body: %w", err)
+		}
+
+		if response.StatusCode < 200 || response.StatusCode >= 400 {
+			apiError = unmarshalAPIError(responseBytes)
+			if !r.shouldRetry(response, method) {
+				return apiError
+			}
+
+			delay := backoff.NextDelay(attempts)
+
+			retryAfter := response.Header.Get("Retry-After")
+			if retryAfter != "" {
+				if parsedDelay, parseErr := time.Parse(time.RFC1123, retryAfter); parseErr == nil {
+					delay = parsedDelay.Sub(time.Now())
+				} else if seconds, convErr := strconv.Atoi(retryAfter); convErr == nil {
+					delay = time.Duration(seconds) * time.Second
+				}
+			}
+
+			if delay > 0 {
+				time.Sleep(delay)
+			}
+
+			attempts++
+		} else {
+			if out != nil {
+				if err := json.Unmarshal(responseBytes, &out); err != nil {
+					return fmt.Errorf("failed to unmarshal response: %w", err)
+				}
+			}
+
+			return nil
+		}
+	}
+
+	if apiError != nil {
 		return apiError
 	}
 
-	if out != nil {
-		if err := json.Unmarshal(responseBytes, &out); err != nil {
-			return fmt.Errorf("failed to unmarshal response: %w", err)
-		}
+	if attempts > 0 {
+		return fmt.Errorf("request failed after %d attempts", maxRetries)
 	}
 
-	return nil
+	return fmt.Errorf("request failed")
+}
+
+// shouldRetry returns true if the request should be retried.
+//
+// - GET requests should be retried if the response status code is 429 or 5xx.
+// - Other requests should be retried if the response status code is 429.
+func (r *Client) shouldRetry(response *http.Response, method string) bool {
+	if method == http.MethodGet {
+		return response.StatusCode == 429 || (response.StatusCode >= 500 && response.StatusCode < 600)
+	}
+
+	return response.StatusCode == 429
 }
 
 func constructURL(baseUrl, route string) string {

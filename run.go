@@ -5,10 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"time"
 )
-
-const defaultPollingInterval = 1 * time.Second
 
 func (r *Client) Run(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook) (PredictionOutput, error) {
 	namePattern := `[a-zA-Z0-9]+(?:(?:[._]|__|[-]*)[a-zA-Z0-9]+)*`
