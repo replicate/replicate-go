@@ -301,7 +301,6 @@ func TestCreatePrediction(t *testing.T) {
 		URL:    "https://example.com/webhook",
 		Events: []replicate.WebhookEventType{"start", "completed"},
 	}
-
 	version := "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
 	prediction, err := client.CreatePrediction(context.Background(), version, input, &webhook, true)
 	if err != nil {
@@ -592,8 +591,11 @@ func TestCreateTraining(t *testing.T) {
 		URL:    "https://example.com/webhook",
 		Events: []replicate.WebhookEventType{"start", "completed"},
 	}
-
 	training, err := client.CreateTraining(ctx, "owner", "model", "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", destination, input, &webhook)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	assert.NoError(t, err)
 	assert.Equal(t, "zz4ibbonubfz7carwiefibzgga", training.ID)
 	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", training.Version)
@@ -707,4 +709,116 @@ func TestListTrainings(t *testing.T) {
 	assert.Len(t, page.Results, 2)
 	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", page.Results[0].ID)
 	assert.Equal(t, "rrr4z55ocneqzikepnug6xezpe", page.Results[1].ID)
+}
+
+func TestAutomaticallyRetryGetRequests(t *testing.T) {
+	statuses := []int{http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusOK}
+
+	i := 0
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		status := statuses[i]
+		i++
+
+		if status == http.StatusOK {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(status)
+
+			prediction := &replicate.Prediction{
+				ID:        "ufawqhfynnddngldkgtslldrkq",
+				Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				Status:    replicate.Succeeded,
+				Input:     replicate.PredictionInput{"text": "Alice"},
+				Output:    map[string]interface{}{"text": "Hello, Alice"},
+				CreatedAt: "2022-04-26T22:13:06.224088Z",
+				URLs: map[string]string{
+					"get":    "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq",
+					"cancel": "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel",
+				},
+			}
+
+			body, _ := json.Marshal(prediction)
+			w.Write(body)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(status)
+
+			if status == http.StatusInternalServerError {
+				err := &replicate.APIError{
+					Detail: "Internal server error",
+				}
+				body, _ := json.Marshal(err)
+				w.Write(body)
+			} else if status == http.StatusTooManyRequests {
+				err := &replicate.APIError{
+					Detail: "Too many requests",
+				}
+				body, _ := json.Marshal(err)
+				w.Write(body)
+			}
+		}
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	prediction, err := client.GetPrediction(ctx, "ufawqhfynnddngldkgtslldrkq")
+	assert.NoError(t, err)
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
+}
+
+func TestAutomaticallyRetryPostRequests(t *testing.T) {
+	statuses := []int{http.StatusTooManyRequests, http.StatusInternalServerError}
+
+	i := 0
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		status := statuses[i]
+		i++
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Retry-After", "0")
+		w.WriteHeader(status)
+
+		if status == http.StatusInternalServerError {
+			err := &replicate.APIError{
+				Detail: "Internal server error",
+			}
+			body, _ := json.Marshal(err)
+			w.Write(body)
+		} else if status == http.StatusTooManyRequests {
+			err := &replicate.APIError{
+				Detail: "Too many requests",
+			}
+			body, _ := json.Marshal(err)
+			w.Write(body)
+		}
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	input := replicate.PredictionInput{"text": "Alice"}
+	webhook := replicate.Webhook{
+		URL:    "https://example.com/webhook",
+		Events: []replicate.WebhookEventType{"start", "completed"},
+	}
+	version := "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
+	_, err = client.CreatePrediction(ctx, version, input, &webhook, true)
+
+	assert.ErrorContains(t, err, "Internal server error")
 }
