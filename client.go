@@ -232,17 +232,13 @@ func (r *Client) request(ctx context.Context, method, path string, body interfac
 // shouldRetry returns true if the request should be retried.
 //
 // - GET requests should be retried if the response status code is 429 or 5xx.
-// - POST and PUT requests should be retried if the response status code is 429.
+// - Other requests should be retried if the response status code is 429.
 func (r *Client) shouldRetry(response *http.Response, method string) bool {
-	if response.StatusCode == 429 {
-		return true
-	}
-
 	if method == http.MethodGet {
-		return response.StatusCode < 500 || response.StatusCode >= 600
+		return response.StatusCode == 429 || (response.StatusCode >= 500 && response.StatusCode < 600)
 	}
 
-	return false
+	return response.StatusCode == 429
 }
 
 func constructURL(baseUrl, route string) string {
