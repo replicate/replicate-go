@@ -3,6 +3,8 @@ package replicate
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 )
 
 type Source string
@@ -30,6 +32,42 @@ type Prediction struct {
 	CreatedAt           string             `json:"created_at"`
 	StartedAt           *string            `json:"started_at,omitempty"`
 	CompletedAt         *string            `json:"completed_at,omitempty"`
+}
+
+type PredictionProgress struct {
+	Percentage float64
+	Current    int
+	Total      int
+}
+
+func (p Prediction) Progress() *PredictionProgress {
+	if p.Logs == nil || *p.Logs == "" {
+		return nil
+	}
+
+	pattern := `^\s*(?P<percentage>\d+)%\s*\|.+?\|\s*(?P<current>\d+)\/(?P<total>\d+)`
+	re := regexp.MustCompile(pattern)
+
+	lines := strings.Split(*p.Logs, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if re.MatchString(line) {
+			matches := re.FindStringSubmatch(lines[i])
+			if len(matches) == 4 {
+				var percentage, current, total int
+				fmt.Sscanf(matches[1], "%d", &percentage)
+				fmt.Sscanf(matches[2], "%d", &current)
+				fmt.Sscanf(matches[3], "%d", &total)
+				return &PredictionProgress{
+					Percentage: float64(percentage) / float64(100),
+					Current:    current,
+					Total:      total,
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 type PredictionInput map[string]interface{}
