@@ -36,7 +36,7 @@ func (w WebhookEventType) String() string {
 }
 
 // Download
-// output  is urls of Prediction.Output
+// output  is urls of Prediction.Output field
 // dirPath is directory for saving images
 func Download(ctx context.Context, output []string, dirPath string) error {
 	errChan := make(chan error)
