@@ -62,7 +62,7 @@ func Download(ctx context.Context, output []string, dirPath string) error {
 
 				// if err is nil, return error
 				if _, err := os.Stat(dirPath + "/" + filepath.Base(o)); err == nil {
-					errChan <- fmt.Errorf("%s image file already exists", filepath.Base(o))
+					errChan <- fmt.Errorf("%s image file name already exists", filepath.Base(o))
 					return
 				}
 
