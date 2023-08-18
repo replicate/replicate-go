@@ -3,7 +3,7 @@ package replicate_test
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -246,7 +246,7 @@ func TestCreatePrediction(t *testing.T) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/predictions", r.URL.Path)
 
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			t.Fatal(err)
 		}

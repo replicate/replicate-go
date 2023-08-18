@@ -26,7 +26,7 @@ func WithPollingInterval(interval time.Duration) WaitOption {
 
 // Wait for a prediction to finish.
 //
-// This function blocks until the prediction has finished, or the context is cancelled.
+// This function blocks until the prediction has finished, or the context is canceled.
 // If the prediction has already finished, the function returns immediately.
 // If polling interval is less than or equal to zero, an error is returned.
 func (r *Client) Wait(ctx context.Context, prediction *Prediction, opts ...WaitOption) error {
@@ -43,7 +43,7 @@ func (r *Client) Wait(ctx context.Context, prediction *Prediction, opts ...WaitO
 // WaitAsync returns a channel that receives the prediction as it progresses.
 //
 // The channel is closed when the prediction has finished,
-// or the context is cancelled.
+// or the context is canceled.
 // If the prediction has already finished, the channel is closed immediately.
 // If polling interval is less than or equal to zero,
 // an error is sent to the error channel.

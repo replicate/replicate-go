@@ -245,8 +245,10 @@ func constructURL(baseUrl, route string) string {
 	if strings.HasPrefix(route, "/") {
 		route = route[1:]
 	}
+
 	if !strings.HasSuffix(baseUrl, "/") {
-		baseUrl = baseUrl + "/"
+		baseUrl += "/"
 	}
+
 	return baseUrl + route
 }
