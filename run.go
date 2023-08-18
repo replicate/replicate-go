@@ -30,7 +30,7 @@ func (r *Client) Run(ctx context.Context, identifier string, input PredictionInp
 		return nil, err
 	}
 
-	r.Wait(ctx, prediction)
+	err = r.Wait(ctx, prediction)
 
 	return prediction.Output, err
 }
