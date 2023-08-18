@@ -19,7 +19,7 @@ type ConstantBackoff struct {
 
 // NextDelay returns the next delay.
 func (b *ConstantBackoff) NextDelay(retries int) time.Duration {
-	jitter := time.Duration(rand.Float64() * float64(b.Jitter))
+	jitter := time.Duration(rand.Float64() * float64(b.Jitter)) //#nosec G404
 	return b.Base + jitter
 }
 
@@ -32,6 +32,6 @@ type ExponentialBackoff struct {
 
 // NextDelay returns the next delay.
 func (b *ExponentialBackoff) NextDelay(retries int) time.Duration {
-	jitter := time.Duration(rand.Float64() * float64(b.Jitter))
+	jitter := time.Duration(rand.Float64() * float64(b.Jitter)) //#nosec G404
 	return time.Duration(float64(b.Base)*math.Pow(b.Multiplier, float64(retries))) + jitter
 }
