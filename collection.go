@@ -2,6 +2,7 @@ package replicate
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 )
 
@@ -10,6 +11,24 @@ type Collection struct {
 	Slug        string   `json:"slug"`
 	Description string   `json:"description"`
 	Models      *[]Model `json:"models,omitempty"`
+
+	rawJSON json.RawMessage `json:"-"`
+}
+
+func (c Collection) MarshalJSON() ([]byte, error) {
+	if c.rawJSON != nil {
+		return c.rawJSON, nil
+	} else {
+		type Alias Collection
+		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&c)})
+	}
+}
+
+func (c *Collection) UnmarshalJSON(data []byte) error {
+	c.rawJSON = data
+	type Alias Collection
+	alias := &struct{ *Alias }{Alias: (*Alias)(c)}
+	return json.Unmarshal(data, alias)
 }
 
 // ListCollections returns a list of all collections.
