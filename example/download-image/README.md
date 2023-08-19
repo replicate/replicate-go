@@ -1,5 +1,4 @@
-this example is to send a prompt and download the generated images to a data
-directory
+this example is to send download the generated images to a directory
 
 # HOW TO SET UP
 
