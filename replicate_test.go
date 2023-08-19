@@ -78,12 +78,15 @@ func TestListCollections(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	initialPage, err := client.ListCollections(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	initialPage, err := client.ListCollections(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resultsChan, errChan := replicate.Paginate(context.Background(), client, initialPage)
+	resultsChan, errChan := replicate.Paginate(ctx, client, initialPage)
 
 	var collections []replicate.Collection
 	for results := range resultsChan {
@@ -174,7 +177,10 @@ func TestGetModel(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	model, err := client.GetModel(context.Background(), "replicate", "hello-world")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	model, err := client.GetModel(ctx, "replicate", "hello-world")
 	assert.NoError(t, err)
 	assert.Equal(t, "replicate", model.Owner)
 	assert.Equal(t, "hello-world", model.Name)
@@ -205,7 +211,10 @@ func TestListModelVersions(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	versionsPage, err := client.ListModelVersions(context.Background(), "replicate", "hello-world")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	versionsPage, err := client.ListModelVersions(ctx, "replicate", "hello-world")
 	assert.NoError(t, err)
 	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", versionsPage.Results[0].ID)
 	assert.Equal(t, "b21cbe271e65c1718f2999b038c18b45e21e4fba961181fbfae9342fc53b9e05", versionsPage.Results[1].ID)
@@ -236,7 +245,10 @@ func TestGetModelVersion(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	version, err := client.GetModelVersion(context.Background(), "replicate", "hello-world", "version1")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	version, err := client.GetModelVersion(ctx, "replicate", "hello-world", "version1")
 	assert.NoError(t, err)
 	assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", version.ID)
 }
@@ -296,13 +308,16 @@ func TestCreatePrediction(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	input := replicate.PredictionInput{"text": "Alice"}
 	webhook := replicate.Webhook{
 		URL:    "https://example.com/webhook",
 		Events: []replicate.WebhookEventType{"start", "completed"},
 	}
 	version := "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
-	prediction, err := client.CreatePrediction(context.Background(), version, input, &webhook, true)
+	prediction, err := client.CreatePrediction(ctx, version, input, &webhook, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -435,12 +450,15 @@ func TestListPredictions(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	initialPage, err := client.ListPredictions(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	initialPage, err := client.ListPredictions(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resultsChan, errChan := replicate.Paginate(context.Background(), client, initialPage)
+	resultsChan, errChan := replicate.Paginate(ctx, client, initialPage)
 
 	var predictions []replicate.Prediction
 	for results := range resultsChan {
