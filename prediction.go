@@ -2,6 +2,7 @@ package replicate
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -32,6 +33,24 @@ type Prediction struct {
 	CreatedAt           string             `json:"created_at"`
 	StartedAt           *string            `json:"started_at,omitempty"`
 	CompletedAt         *string            `json:"completed_at,omitempty"`
+
+	rawJSON json.RawMessage `json:"-"`
+}
+
+func (p Prediction) MarshalJSON() ([]byte, error) {
+	if p.rawJSON != nil {
+		return p.rawJSON, nil
+	} else {
+		type Alias Prediction
+		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
+	}
+}
+
+func (p *Prediction) UnmarshalJSON(data []byte) error {
+	p.rawJSON = data
+	type Alias Prediction
+	alias := &struct{ *Alias }{Alias: (*Alias)(p)}
+	return json.Unmarshal(data, alias)
 }
 
 type PredictionProgress struct {

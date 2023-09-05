@@ -2,6 +2,7 @@ package replicate
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 )
 
@@ -18,6 +19,24 @@ type Model struct {
 	CoverImageURL  string        `json:"cover_image_url"`
 	DefaultExample *Prediction   `json:"default_example"`
 	LatestVersion  *ModelVersion `json:"latest_version"`
+
+	rawJSON json.RawMessage `json:"-"`
+}
+
+func (m Model) MarshalJSON() ([]byte, error) {
+	if m.rawJSON != nil {
+		return m.rawJSON, nil
+	} else {
+		type Alias Model
+		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&m)})
+	}
+}
+
+func (m *Model) UnmarshalJSON(data []byte) error {
+	m.rawJSON = data
+	type Alias Model
+	alias := &struct{ *Alias }{Alias: (*Alias)(m)}
+	return json.Unmarshal(data, alias)
 }
 
 type ModelVersion struct {
@@ -25,6 +44,24 @@ type ModelVersion struct {
 	CreatedAt     string      `json:"created_at"`
 	CogVersion    string      `json:"cog_version"`
 	OpenAPISchema interface{} `json:"openapi_schema"`
+
+	rawJSON json.RawMessage `json:"-"`
+}
+
+func (m ModelVersion) MarshalJSON() ([]byte, error) {
+	if m.rawJSON != nil {
+		return m.rawJSON, nil
+	} else {
+		type Alias ModelVersion
+		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&m)})
+	}
+}
+
+func (m *ModelVersion) UnmarshalJSON(data []byte) error {
+	m.rawJSON = data
+	type Alias ModelVersion
+	alias := &struct{ *Alias }{Alias: (*Alias)(m)}
+	return json.Unmarshal(data, alias)
 }
 
 // GetModel retrieves information about a model.

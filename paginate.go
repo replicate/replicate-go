@@ -2,6 +2,7 @@ package replicate
 
 import (
 	"context"
+	"encoding/json"
 )
 
 // Page represents a paginated response from Replicate's API.
@@ -9,6 +10,24 @@ type Page[T any] struct {
 	Previous *string `json:"previous,omitempty"`
 	Next     *string `json:"next,omitempty"`
 	Results  []T     `json:"results"`
+
+	rawJSON json.RawMessage `json:"-"`
+}
+
+func (p Page[T]) MarshalJSON() ([]byte, error) {
+	if p.rawJSON != nil {
+		return p.rawJSON, nil
+	} else {
+		type Alias Page[T]
+		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
+	}
+}
+
+func (p *Page[T]) UnmarshalJSON(data []byte) error {
+	p.rawJSON = data
+	type Alias Page[T]
+	alias := &struct{ *Alias }{Alias: (*Alias)(p)}
+	return json.Unmarshal(data, alias)
 }
 
 // Paginate takes a Page and the Client request method, and iterates through pages of results.
