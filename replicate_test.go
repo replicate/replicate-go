@@ -330,6 +330,82 @@ func TestCreatePrediction(t *testing.T) {
 	assert.Equal(t, "https://streaming.api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["stream"])
 }
 
+func TestCreatePredictionWithDeployment(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/deployments/owner/name/predictions", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+
+		var requestBody map[string]interface{}
+		err = json.Unmarshal(body, &requestBody)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Nil(t, requestBody["version"])
+		assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
+		assert.Equal(t, "https://example.com/webhook", requestBody["webhook"])
+		assert.Equal(t, []interface{}{"start", "completed"}, requestBody["webhook_events_filter"])
+		assert.Equal(t, true, requestBody["stream"])
+
+		response := replicate.Prediction{
+			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+			Status:    "starting",
+			Input:     map[string]interface{}{"text": "Alice"},
+			Output:    nil,
+			Error:     nil,
+			Logs:      nil,
+			Metrics:   nil,
+			CreatedAt: "2022-04-26T22:13:06.224088Z",
+			URLs: map[string]string{
+				"get":    "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq",
+				"cancel": "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel",
+				"stream": "https://streaming.api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq",
+			},
+		}
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	input := replicate.PredictionInput{"text": "Alice"}
+	webhook := replicate.Webhook{
+		URL:    "https://example.com/webhook",
+		Events: []replicate.WebhookEventType{"start", "completed"},
+	}
+	prediction, err := client.CreatePredictionWithDeployment(ctx, "owner", "name", input, &webhook, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
+	assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", prediction.Version)
+	assert.Equal(t, replicate.Starting, prediction.Status)
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["get"])
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel", prediction.URLs["cancel"])
+	assert.Equal(t, "https://streaming.api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["stream"])
+}
+
 func TestPredictionProgress(t *testing.T) {
 	prediction := replicate.Prediction{
 		ID:        "ufawqhfynnddngldkgtslldrkq",
