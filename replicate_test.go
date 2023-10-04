@@ -146,6 +146,51 @@ func TestGetCollection(t *testing.T) {
 	assert.Empty(t, *collection.Models)
 }
 
+func TestListModels(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/models", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		response := replicate.Page[replicate.Model]{
+			Results: []replicate.Model{
+				{
+					Owner:       "stability-ai",
+					Name:        "sdxl",
+					Description: "A text-to-image generative AI model that creates beautiful 1024x1024 images",
+				},
+				{
+					Owner:       "meta",
+					Name:        "codellama-13b",
+					Description: "A 13 billion parameter Llama tuned for code completion",
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(response)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	modelsPage, err := client.ListModels(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(modelsPage.Results))
+	assert.Equal(t, "stability-ai", modelsPage.Results[0].Owner)
+	assert.Equal(t, "sdxl", modelsPage.Results[0].Name)
+	assert.Equal(t, "meta", modelsPage.Results[1].Owner)
+	assert.Equal(t, "codellama-13b", modelsPage.Results[1].Name)
+}
+
 func TestGetModel(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/models/replicate/hello-world", r.URL.Path)
