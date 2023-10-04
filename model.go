@@ -64,6 +64,16 @@ func (m *ModelVersion) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, alias)
 }
 
+// ListModels lists public models.
+func (r *Client) ListModels(ctx context.Context) (*Page[Model], error) {
+	response := &Page[Model]{}
+	err := r.request(ctx, "GET", "/models", nil, response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list models: %w", err)
+	}
+	return response, nil
+}
+
 // GetModel retrieves information about a model.
 func (r *Client) GetModel(ctx context.Context, modelOwner string, modelName string) (*Model, error) {
 	model := &Model{}
