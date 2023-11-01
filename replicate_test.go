@@ -924,6 +924,48 @@ func TestListTrainings(t *testing.T) {
 	assert.Equal(t, "rrr4z55ocneqzikepnug6xezpe", page.Results[1].ID)
 }
 
+func TestListHardware(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/hardware", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		response := []replicate.Hardware{
+			{Name: "CPU", SKU: "cpu"},
+			{Name: "Nvidia T4 GPU", SKU: "gpu-t4"},
+			{Name: "Nvidia A40 GPU", SKU: "gpu-a40-small"},
+			{Name: "Nvidia A40 (Large) GPU", SKU: "gpu-a40-large"},
+		}
+
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	hardwareList, err := client.ListHardware(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 4, len(*hardwareList))
+
+	assert.Equal(t, "CPU", (*hardwareList)[0].Name)
+	assert.Equal(t, "cpu", (*hardwareList)[0].SKU)
+}
+
 func TestAutomaticallyRetryGetRequests(t *testing.T) {
 	statuses := []int{http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusOK}
 
