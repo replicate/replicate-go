@@ -39,6 +39,16 @@ func (m *Model) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, alias)
 }
 
+type CreateModelOptions struct {
+	Visibility    string  `json:"visibility"`
+	Hardware      string  `json:"hardware"`
+	Description   *string `json:"description,omitempty"`
+	GithubURL     *string `json:"github_url,omitempty"`
+	PaperURL      *string `json:"paper_url,omitempty"`
+	LicenseURL    *string `json:"license_url,omitempty"`
+	CoverImageURL *string `json:"cover_image_url,omitempty"`
+}
+
 type ModelVersion struct {
 	ID            string      `json:"id"`
 	CreatedAt     string      `json:"created_at"`
@@ -80,6 +90,27 @@ func (r *Client) GetModel(ctx context.Context, modelOwner string, modelName stri
 	err := r.request(ctx, "GET", fmt.Sprintf("/models/%s/%s", modelOwner, modelName), nil, model)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get model: %w", err)
+	}
+	return model, nil
+}
+
+// CreateModel creates a new model.
+func (r *Client) CreateModel(ctx context.Context, modelOwner string, modelName string, options CreateModelOptions) (*Model, error) {
+	model := &Model{}
+
+	body := struct {
+		Owner string `json:"owner"`
+		Name  string `json:"name"`
+		CreateModelOptions
+	}{
+		Owner:              modelOwner,
+		Name:               modelName,
+		CreateModelOptions: options,
+	}
+
+	err := r.request(ctx, "POST", "/models", body, model)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create model: %w", err)
 	}
 	return model, nil
 }
