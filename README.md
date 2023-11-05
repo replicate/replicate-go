@@ -1,5 +1,7 @@
 # Replicate Go client
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/replicate/replicate-go.svg)](https://pkg.go.dev/github.com/replicate/replicate-go)
+
 A Go client for [Replicate](https://replicate.com).
 It lets you run models from your Go code,
 and everything else you can do with
