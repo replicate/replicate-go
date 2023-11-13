@@ -1,3 +1,6 @@
+> **Important**
+> [Help us make Replicate better by taking part in user research](https://forms.gle/qUVQ84mjiqzwzSb48)
+
 # Replicate Go client
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/replicate/replicate-go.svg)](https://pkg.go.dev/github.com/replicate/replicate-go)
