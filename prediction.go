@@ -18,6 +18,7 @@ const (
 type Prediction struct {
 	ID      string           `json:"id"`
 	Status  Status           `json:"status"`
+	Model   string           `json:"model"`
 	Version string           `json:"version"`
 	Input   PredictionInput  `json:"input"`
 	Output  PredictionOutput `json:"output,omitempty"`
