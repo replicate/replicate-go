@@ -392,6 +392,7 @@ func TestCreatePrediction(t *testing.T) {
 
 		response := replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Model:     "replicate/hello-world",
 			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 			Status:    "starting",
 			Input:     map[string]interface{}{"text": "Alice"},
@@ -469,6 +470,7 @@ func TestCreatePredictionWithDeployment(t *testing.T) {
 
 		response := replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Model:     "replicate/hello-world",
 			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 			Status:    "starting",
 			Input:     map[string]interface{}{"text": "Alice"},
@@ -523,6 +525,7 @@ func TestCreatePredictionWithDeployment(t *testing.T) {
 func TestPredictionProgress(t *testing.T) {
 	prediction := replicate.Prediction{
 		ID:        "ufawqhfynnddngldkgtslldrkq",
+		Model:     "replicate/hello-world",
 		Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 		Status:    "starting",
 		Input:     map[string]interface{}{"text": "Alice"},
@@ -675,6 +678,7 @@ func TestGetPrediction(t *testing.T) {
 
 		prediction := &replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Model:     "replicate/hello-world",
 			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 			Status:    replicate.Succeeded,
 			Input:     replicate.PredictionInput{"text": "Alice"},
@@ -722,6 +726,7 @@ func TestWait(t *testing.T) {
 
 		prediction := &replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Model:     "replicate/hello-world",
 			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 			Status:    statuses[i],
 			Input:     replicate.PredictionInput{"text": "Alice"},
@@ -751,6 +756,7 @@ func TestWait(t *testing.T) {
 
 	prediction := &replicate.Prediction{
 		ID:        "ufawqhfynnddngldkgtslldrkq",
+		Model:     "replicate/hello-world",
 		Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 		Status:    replicate.Starting,
 		Input:     replicate.PredictionInput{"text": "Alice"},
@@ -778,6 +784,7 @@ func TestWaitAsync(t *testing.T) {
 
 		prediction := &replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Model:     "replicate/hello-world",
 			Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 			Status:    statuses[i],
 			Input:     replicate.PredictionInput{"text": "Alice"},
@@ -807,6 +814,7 @@ func TestWaitAsync(t *testing.T) {
 
 	prediction := &replicate.Prediction{
 		ID:        "ufawqhfynnddngldkgtslldrkq",
+		Model:     "replicate/hello-world",
 		Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 		Status:    replicate.Starting,
 		Input:     replicate.PredictionInput{"text": "Alice"},
@@ -842,6 +850,7 @@ func TestCreateTraining(t *testing.T) {
 
 		training := &replicate.Training{
 			ID:        "zz4ibbonubfz7carwiefibzgga",
+			Model:     "replicate/hello-world",
 			Version:   "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532",
 			Status:    replicate.Starting,
 			CreatedAt: "2023-03-28T21:47:58.566434Z",
@@ -893,6 +902,7 @@ func TestGetTraining(t *testing.T) {
 
 		training := &replicate.Training{
 			ID:        "zz4ibbonubfz7carwiefibzgga",
+			Model:     "replicate/hello-world",
 			Version:   "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532",
 			Status:    replicate.Succeeded,
 			CreatedAt: "2023-03-28T21:47:58.566434Z",
@@ -928,6 +938,7 @@ func TestCancelTraining(t *testing.T) {
 
 		training := &replicate.Training{
 			ID:        "zz4ibbonubfz7carwiefibzgga",
+			Model:     "replicate/hello-world",
 			Version:   "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532",
 			Status:    replicate.Canceled,
 			CreatedAt: "2023-03-28T21:47:58.566434Z",
@@ -1050,6 +1061,7 @@ func TestAutomaticallyRetryGetRequests(t *testing.T) {
 
 			prediction := &replicate.Prediction{
 				ID:        "ufawqhfynnddngldkgtslldrkq",
+				Model:     "replicate/hello-world",
 				Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 				Status:    replicate.Succeeded,
 				Input:     replicate.PredictionInput{"text": "Alice"},
