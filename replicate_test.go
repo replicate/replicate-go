@@ -522,6 +522,73 @@ func TestCreatePredictionWithDeployment(t *testing.T) {
 	assert.Equal(t, "https://streaming.api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["stream"])
 }
 
+func TestCreatePredictionWithModel(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/models/owner/model/predictions", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+
+		var requestBody map[string]interface{}
+		err = json.Unmarshal(body, &requestBody)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
+		assert.Equal(t, "https://example.com/webhook", requestBody["webhook"])
+		assert.Equal(t, []interface{}{"start", "completed"}, requestBody["webhook_events_filter"])
+		assert.Equal(t, true, requestBody["stream"])
+
+		response := replicate.Prediction{
+			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Model:     "owner/model",
+			Status:    "starting",
+			Input:     map[string]interface{}{"text": "Alice"},
+			Output:    nil,
+			Error:     nil,
+			Logs:      nil,
+			Metrics:   nil,
+			CreatedAt: "2022-04-26T22:13:06.224088Z",
+		}
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	input := replicate.PredictionInput{"text": "Alice"}
+	webhook := replicate.Webhook{
+		URL:    "https://example.com/webhook",
+		Events: []replicate.WebhookEventType{"start", "completed"},
+	}
+	prediction, err := client.CreatePredictionWithModel(ctx, "owner", "model", input, &webhook, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
+	assert.Equal(t, "owner/model", prediction.Model)
+	assert.Equal(t, replicate.Starting, prediction.Status)
+}
+
 func TestPredictionProgress(t *testing.T) {
 	prediction := replicate.Prediction{
 		ID:        "ufawqhfynnddngldkgtslldrkq",
