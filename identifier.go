@@ -2,6 +2,7 @@ package replicate
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -45,4 +46,12 @@ func ParseIdentifier(identifier string) (*Identifier, error) {
 		Name:    name,
 		Version: version,
 	}, nil
+}
+
+func (i *Identifier) String() string {
+	if i.Version == nil {
+		return fmt.Sprintf("%s/%s", i.Owner, i.Name)
+	}
+
+	return fmt.Sprintf("%s/%s:%s", i.Owner, i.Name, *i.Version)
 }
