@@ -135,7 +135,11 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case b := <-lineChan:
+			case b, ok := <-lineChan:
+				if !ok {
+					return nil
+				}
+
 				buf.Write(b)
 
 				if bytes.Equal(b, []byte("\n")) {
