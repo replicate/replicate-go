@@ -4,45 +4,36 @@ import (
 	"testing"
 
 	"github.com/replicate/replicate-go"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidWithVersion(t *testing.T) {
 	identifier, err := replicate.ParseIdentifier("owner/name:abc123")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if identifier.Owner != "owner" || identifier.Name != "name" || *identifier.Version != "abc123" {
-		t.Errorf("Unexpected identifier: %+v", identifier)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "owner", identifier.Owner)
+	assert.Equal(t, "name", identifier.Name)
+	assert.Equal(t, "abc123", *identifier.Version)
 }
 
 func TestValidWithoutVersion(t *testing.T) {
 	identifier, err := replicate.ParseIdentifier("owner/name")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	if identifier.Owner != "owner" || identifier.Name != "name" || identifier.Version != nil {
-		t.Errorf("Unexpected identifier: %+v", identifier)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "owner", identifier.Owner)
+	assert.Equal(t, "name", identifier.Name)
+	assert.Nil(t, identifier.Version)
 }
 
 func TestInvalid(t *testing.T) {
 	_, err := replicate.ParseIdentifier("invalid")
-	if err != replicate.ErrInvalidIdentifier {
-		t.Errorf("Expected ErrInvalidIdentifier, got: %v", err)
-	}
+	assert.Equal(t, replicate.ErrInvalidIdentifier, err)
 }
 
 func TestEmpty(t *testing.T) {
 	_, err := replicate.ParseIdentifier("/")
-	if err != replicate.ErrInvalidIdentifier {
-		t.Errorf("Expected ErrInvalidIdentifier, got: %v", err)
-	}
+	assert.Equal(t, replicate.ErrInvalidIdentifier, err)
 }
 
 func TestBlank(t *testing.T) {
 	_, err := replicate.ParseIdentifier("")
-	if err != replicate.ErrInvalidIdentifier {
-		t.Errorf("Expected ErrInvalidIdentifier, got: %v", err)
-	}
+	assert.Equal(t, replicate.ErrInvalidIdentifier, err)
 }
