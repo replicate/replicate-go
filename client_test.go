@@ -3,6 +3,7 @@ package replicate_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1224,4 +1225,91 @@ func TestAutomaticallyRetryPostRequests(t *testing.T) {
 	_, err = client.CreatePrediction(ctx, version, input, &webhook, true)
 
 	assert.ErrorContains(t, err, "Internal server error")
+}
+
+func TestStream(t *testing.T) {
+	tokens := []string{"Alpha", "Bravo", "Charlie", "Delta", "Echo"}
+
+	mockServer := httptest.NewUnstartedServer(nil)
+	mockServer.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" && r.URL.Path == "/predictions" {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Body.Close()
+
+			var requestBody map[string]interface{}
+			err = json.Unmarshal(body, &requestBody)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", requestBody["version"])
+			assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
+			assert.Equal(t, true, requestBody["stream"])
+
+			response := replicate.Prediction{
+				ID:        "ufawqhfynnddngldkgtslldrkq",
+				Model:     "replicate/hello-world",
+				Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				Status:    "starting",
+				Input:     map[string]interface{}{"text": "Alice"},
+				CreatedAt: "2022-04-26T22:13:06.224088Z",
+				URLs: map[string]string{
+					"stream": fmt.Sprintf("%s/predictions/ufawqhfynnddngldkgtslldrkq/stream", mockServer.URL),
+				},
+			}
+			responseBytes, err := json.Marshal(response)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			w.WriteHeader(http.StatusCreated)
+			w.Write(responseBytes)
+		} else if r.Method == "GET" && r.URL.Path == "/predictions/ufawqhfynnddngldkgtslldrkq/stream" {
+			flusher, _ := w.(http.Flusher)
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("Connection", "keep-alive")
+
+			for _, token := range tokens {
+				fmt.Fprintf(w, "data: %s\n\n", token)
+				flusher.Flush()
+				time.Sleep(time.Millisecond * 10)
+			}
+		} else {
+			t.Fatalf("Unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	})
+
+	mockServer.Start()
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	input := replicate.PredictionInput{"text": "Alice"}
+	version := "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
+
+	sseChan, errChan := client.Stream(ctx, fmt.Sprintf("replicate/hello-world:%s", version), input, nil)
+
+	for _, token := range tokens {
+		select {
+		case <-ctx.Done():
+			t.Fatal("context canceled")
+		case <-time.After(10 * time.Second):
+			t.Fatal("timeout")
+		case event := <-sseChan:
+			assert.Equal(t, token, event.Data)
+		case err := <-errChan:
+			assert.NoError(t, err)
+		}
+	}
 }
