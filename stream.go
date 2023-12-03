@@ -58,86 +58,103 @@ func (e *SSEEvent) decode(b []byte) error {
 	return nil
 }
 
-// Stream runs a model with the given input and returns a streams its output.
 func (r *Client) Stream(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook) (<-chan SSEEvent, <-chan error) {
 	sseChan := make(chan SSEEvent, 64)
 	errChan := make(chan error, 64)
 
+	id, err := ParseIdentifier(identifier)
+	if err != nil {
+		errChan <- err
+		return sseChan, errChan
+	}
+
+	var prediction *Prediction
+	if id.Version == nil {
+		prediction, err = r.CreatePredictionWithModel(ctx, id.Owner, id.Name, input, webhook, true)
+	} else {
+		prediction, err = r.CreatePrediction(ctx, *id.Version, input, webhook, true)
+	}
+
+	if err != nil {
+		errChan <- err
+		return sseChan, errChan
+	}
+
+	return r.streamPrediction(ctx, prediction, sseChan, errChan)
+}
+
+func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (<-chan SSEEvent, <-chan error) {
+	sseChan := make(chan SSEEvent, 64)
+	errChan := make(chan error, 64)
+
+	return r.streamPrediction(ctx, prediction, sseChan, errChan)
+}
+
+func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, sseChan chan SSEEvent, errChan chan error) (<-chan SSEEvent, <-chan error) {
+	g, ctx := errgroup.WithContext(ctx)
+
+	url := prediction.URLs["stream"]
+	if url == "" {
+		errChan <- errors.New("streaming not supported")
+		return sseChan, errChan
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		errChan <- fmt.Errorf("failed to create request: %w", err)
+		return sseChan, errChan
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Connection", "keep-alive")
+
+	resp, err := r.c.Do(req)
+	if err != nil {
+		resp.Body.Close()
+		errChan <- fmt.Errorf("failed to send request: %w", err)
+		return sseChan, errChan
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		errChan <- fmt.Errorf("received invalid status code %d", resp.StatusCode)
+		return sseChan, errChan
+	}
+
 	done := make(chan struct{})
 
-	g, ctx := errgroup.WithContext(ctx)
+	reader := bufio.NewReader(resp.Body)
+	var buf bytes.Buffer
+	lineChan := make(chan []byte)
+
 	g.Go(func() error {
-		id, err := ParseIdentifier(identifier)
-		if err != nil {
-			return err
-		}
-
-		var prediction *Prediction
-		if id.Version == nil {
-			prediction, err = r.CreatePredictionWithModel(ctx, id.Owner, id.Name, input, webhook, true)
-		} else {
-			prediction, err = r.CreatePrediction(ctx, *id.Version, input, webhook, true)
-		}
-
-		if err != nil {
-			return err
-		}
-
-		url := prediction.URLs["stream"]
-		if url == "" {
-			return errors.New("streaming not supported")
-		}
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			return fmt.Errorf("failed to create request: %w", err)
-		}
-		req.Header.Set("Accept", "text/event-stream")
-		req.Header.Set("Cache-Control", "no-cache")
-		req.Header.Set("Connection", "keep-alive")
-
-		resp, err := r.c.Do(req)
-		if err != nil {
-			resp.Body.Close()
-			return fmt.Errorf("failed to send request: %w", err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("received invalid status code %d", resp.StatusCode)
-		}
-
-		r := bufio.NewReader(resp.Body)
-		var buf bytes.Buffer
-		lineChan := make(chan []byte)
-
-		g.Go(func() error {
-			defer close(lineChan)
-
-			for {
-				select {
-				case <-done:
-					return nil
-				default:
-					line, err := r.ReadBytes('\n')
-					if err != nil {
-						defer resp.Body.Close()
-						if err == io.EOF {
-							return nil
-						}
-						return err
-					}
-					lineChan <- line
-				}
-			}
-		})
+		defer close(lineChan)
 
 		for {
 			select {
+			case <-done:
+				return nil
+			default:
+				line, err := reader.ReadBytes('\n')
+				if err != nil {
+					defer resp.Body.Close()
+					if err == io.EOF {
+						return nil
+					}
+					return err
+				}
+				lineChan <- line
+			}
+		}
+	})
+
+	go func() {
+		for {
+			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return
 			case b, ok := <-lineChan:
 				if !ok {
-					return nil
+					return
 				}
 
 				buf.Write(b)
@@ -156,14 +173,14 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 						errChan <- unmarshalAPIError([]byte(event.Data))
 					case "done":
 						close(done)
-						return nil
+						return
 					default:
 						sseChan <- event
 					}
 				}
 			}
 		}
-	})
+	}()
 
 	go func() {
 		defer close(sseChan)
