@@ -59,36 +59,7 @@ func (e *SSEEvent) decode(b []byte) error {
 }
 
 // Stream runs a model with the given input and returns a streams its output.
-func (r *Client) Stream(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook) (<-chan SSEEvent, <-chan error, error) {
-	id, err := ParseIdentifier(identifier)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var prediction *Prediction
-	if id.Version == nil {
-		prediction, err = r.CreatePredictionWithModel(ctx, id.Owner, id.Name, input, webhook, true)
-	} else {
-		prediction, err = r.CreatePrediction(ctx, *id.Version, input, webhook, true)
-	}
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	url := prediction.URLs["stream"]
-	if url == "" {
-		return nil, nil, errors.New("streaming not supported")
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("Connection", "keep-alive")
-
+func (r *Client) Stream(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook) (<-chan SSEEvent, <-chan error) {
 	sseChan := make(chan SSEEvent, 64)
 	errChan := make(chan error, 64)
 
@@ -96,6 +67,35 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
+		id, err := ParseIdentifier(identifier)
+		if err != nil {
+			return err
+		}
+
+		var prediction *Prediction
+		if id.Version == nil {
+			prediction, err = r.CreatePredictionWithModel(ctx, id.Owner, id.Name, input, webhook, true)
+		} else {
+			prediction, err = r.CreatePrediction(ctx, *id.Version, input, webhook, true)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		url := prediction.URLs["stream"]
+		if url == "" {
+			return errors.New("streaming not supported")
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("Accept", "text/event-stream")
+		req.Header.Set("Cache-Control", "no-cache")
+		req.Header.Set("Connection", "keep-alive")
+
 		resp, err := r.c.Do(req)
 		if err != nil {
 			resp.Body.Close()
@@ -171,5 +171,5 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 		}
 	}()
 
-	return sseChan, errChan, nil
+	return sseChan, errChan
 }

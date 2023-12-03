@@ -1298,8 +1298,7 @@ func TestStream(t *testing.T) {
 	input := replicate.PredictionInput{"text": "Alice"}
 	version := "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
 
-	sseChan, errChan, err := client.Stream(ctx, fmt.Sprintf("replicate/hello-world:%s", version), input, nil)
-	assert.NoError(t, err)
+	sseChan, errChan := client.Stream(ctx, fmt.Sprintf("replicate/hello-world:%s", version), input, nil)
 
 	for _, token := range tokens {
 		select {
