@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/replicate/replicate-go"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1148,19 +1149,11 @@ func TestAutomaticallyRetryGetRequests(t *testing.T) {
 			w.Header().Set("Retry-After", "0")
 			w.WriteHeader(status)
 
-			if status == http.StatusInternalServerError {
-				err := &replicate.APIError{
-					Detail: "Internal server error",
-				}
-				body, _ := json.Marshal(err)
-				w.Write(body)
-			} else if status == http.StatusTooManyRequests {
-				err := &replicate.APIError{
-					Detail: "Too many requests",
-				}
-				body, _ := json.Marshal(err)
-				w.Write(body)
+			err := replicate.APIError{
+				Detail: http.StatusText(status),
 			}
+			body, _ := json.Marshal(err)
+			w.Write(body)
 		}
 	}))
 	defer mockServer.Close()
@@ -1191,19 +1184,11 @@ func TestAutomaticallyRetryPostRequests(t *testing.T) {
 		w.Header().Set("Retry-After", "0")
 		w.WriteHeader(status)
 
-		if status == http.StatusInternalServerError {
-			err := &replicate.APIError{
-				Detail: "Internal server error",
-			}
-			body, _ := json.Marshal(err)
-			w.Write(body)
-		} else if status == http.StatusTooManyRequests {
-			err := &replicate.APIError{
-				Detail: "Too many requests",
-			}
-			body, _ := json.Marshal(err)
-			w.Write(body)
+		err := replicate.APIError{
+			Detail: http.StatusText(status),
 		}
+		body, _ := json.Marshal(err)
+		w.Write(body)
 	}))
 	defer mockServer.Close()
 
@@ -1224,7 +1209,7 @@ func TestAutomaticallyRetryPostRequests(t *testing.T) {
 	version := "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
 	_, err = client.CreatePrediction(ctx, version, input, &webhook, true)
 
-	assert.ErrorContains(t, err, "Internal server error")
+	assert.ErrorContains(t, err, http.StatusText(http.StatusInternalServerError))
 }
 
 func TestStream(t *testing.T) {

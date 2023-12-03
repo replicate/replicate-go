@@ -179,7 +179,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 
 					switch event.Type {
 					case "error":
-						errChan <- unmarshalAPIError([]byte(event.Data))
+						errChan <- unmarshalAPIError(nil, []byte(event.Data))
 					case "done":
 						close(done)
 						return
