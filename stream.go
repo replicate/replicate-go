@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"unicode/utf8"
 
 	"golang.org/x/sync/errgroup"
@@ -25,7 +24,8 @@ type SSEEvent struct {
 	Data string
 }
 
-func (e *SSEEvent) decode(b []byte, sb *strings.Builder) error {
+func (e *SSEEvent) decode(b []byte) error {
+	data := [][]byte{}
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		// Parse field and value from line
 		parts := bytes.SplitN(line, []byte{':'}, 2)
@@ -43,23 +43,17 @@ func (e *SSEEvent) decode(b []byte, sb *strings.Builder) error {
 		case "event":
 			e.Type = string(value)
 		case "data":
-			if sb.Len() > 0 {
-				sb.WriteRune('\n')
-			}
-			sb.Write(value)
+			data = append(data, value)
 		default:
 			// ignore
 		}
 	}
 
-	data := sb.String()
-	sb.Reset()
-
-	if !utf8.ValidString(data) {
+	if !utf8.Valid(bytes.Join(data, []byte("\n"))) {
 		return ErrInvalidUTF8Data
 	}
 
-	e.Data = data
+	e.Data = string(bytes.Join(data, []byte("\n")))
 
 	return nil
 }
@@ -98,15 +92,15 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 	sseChan := make(chan SSEEvent, 64)
 	errChan := make(chan error, 64)
 
+	done := make(chan struct{})
+
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		defer close(sseChan)
-
 		resp, err := r.c.Do(req)
 		if err != nil {
+			resp.Body.Close()
 			return fmt.Errorf("failed to send request: %w", err)
 		}
-		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("received invalid status code %d", resp.StatusCode)
@@ -117,19 +111,26 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 		lineChan := make(chan []byte)
 
 		g.Go(func() error {
+			defer close(lineChan)
+
 			for {
-				line, err := r.ReadBytes('\n')
-				if err != nil {
-					if err == io.EOF {
-						return nil
+				select {
+				case <-done:
+					return nil
+				default:
+					line, err := r.ReadBytes('\n')
+					if err != nil {
+						defer resp.Body.Close()
+						if err == io.EOF {
+							return nil
+						}
+						return err
 					}
-					return err
+					lineChan <- line
 				}
-				lineChan <- line
 			}
 		})
 
-		sb := strings.Builder{}
 		for {
 			select {
 			case <-ctx.Done():
@@ -142,7 +143,7 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 					buf.Reset()
 
 					event := SSEEvent{Type: "message"}
-					if err := event.decode(b, &sb); err != nil {
+					if err := event.decode(b); err != nil {
 						errChan <- err
 					}
 
@@ -150,6 +151,7 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 					case "error":
 						errChan <- unmarshalAPIError([]byte(event.Data))
 					case "done":
+						close(done)
 						return nil
 					default:
 						sseChan <- event
@@ -160,11 +162,13 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 	})
 
 	go func() {
+		defer close(sseChan)
+		defer close(errChan)
+
 		err := g.Wait()
 		if err != nil {
 			errChan <- err
 		}
-		close(errChan)
 	}()
 
 	return sseChan, errChan, nil
