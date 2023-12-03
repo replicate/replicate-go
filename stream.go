@@ -71,11 +71,13 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 		return nil, nil, err
 	}
 
+	var prediction *Prediction
 	if id.Version == nil {
-		return nil, nil, errors.New("version must be specified")
+		prediction, err = r.CreatePredictionWithModel(ctx, id.Owner, id.Name, input, webhook, true)
+	} else {
+		prediction, err = r.CreatePrediction(ctx, *id.Version, input, webhook, true)
 	}
 
-	prediction, err := r.CreatePrediction(ctx, *id.Version, input, webhook, true)
 	if err != nil {
 		return nil, nil, err
 	}
