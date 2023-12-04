@@ -17,6 +17,20 @@ var (
 	ErrInvalidUTF8Data = errors.New("invalid UTF-8 data")
 )
 
+const (
+	// SSETypeDone is the type of SSEEvent that indicates the prediction is done. The Data field will contain an empty JSON object.
+	SSETypeDone = "done"
+
+	// SSETypeError is the type of SSEEvent that indicates an error occurred during the prediction. The Data field will contain JSON with the error.
+	SSETypeError = "error"
+
+	// SSETypeLogs is the type of SSEEvent that contains logs from the prediction.
+	SSETypeLogs = "logs"
+
+	// SSETypeOutput is the type of SSEEvent that contains output from the prediction.
+	SSETypeOutput = "output"
+)
+
 // SSEEvent represents a Server-Sent Event.
 type SSEEvent struct {
 	Type string
@@ -181,13 +195,13 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 					b := buf.Bytes()
 					buf.Reset()
 
-					event := SSEEvent{Type: "message"}
+					event := SSEEvent{}
 					if err := event.decode(b); err != nil {
 						errChan <- err
 					}
 
 					sseChan <- event
-					if event.Type == "done" {
+					if event.Type == SSETypeDone {
 						close(done)
 						return
 					}
