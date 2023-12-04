@@ -209,6 +209,11 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 						r.streamPrediction(ctx, prediction, lastEvent, sseChan, errChan)
 						continue
 					}
+
+					if errors.Is(err, context.Canceled) {
+						return
+					}
+
 					errChan <- err
 				}
 			}
