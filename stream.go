@@ -29,7 +29,12 @@ func (e *SSEEvent) decode(b []byte) error {
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		// Parse field and value from line
 		parts := bytes.SplitN(line, []byte{':'}, 2)
-		field := string(parts[0])
+
+		field := ""
+		if len(parts) > 0 {
+			field = string(parts[0])
+		}
+
 		var value []byte
 		if len(parts) == 2 {
 			value = parts[1]
@@ -126,8 +131,10 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 	}
 
 	resp, err := r.c.Do(req)
-	if err != nil {
-		resp.Body.Close()
+	if err != nil || resp == nil {
+		if resp != nil {
+			resp.Body.Close()
+		}
 		errChan <- fmt.Errorf("failed to send request: %w", err)
 		return
 	}

@@ -78,6 +78,7 @@ func TestListCollections(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -135,6 +136,7 @@ func TestGetCollection(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -179,6 +181,7 @@ func TestListModels(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -222,6 +225,7 @@ func TestGetModel(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -282,6 +286,7 @@ func TestCreateModel(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -325,6 +330,7 @@ func TestListModelVersions(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -359,6 +365,7 @@ func TestGetModelVersion(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -423,6 +430,7 @@ func TestCreatePrediction(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -501,6 +509,7 @@ func TestCreatePredictionWithDeployment(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -571,6 +580,7 @@ func TestCreatePredictionWithModel(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -710,6 +720,7 @@ func TestListPredictions(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -770,6 +781,7 @@ func TestGetPrediction(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -821,6 +833,7 @@ func TestWait(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	prediction := &replicate.Prediction{
@@ -879,6 +892,7 @@ func TestWaitAsync(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	prediction := &replicate.Prediction{
@@ -940,6 +954,7 @@ func TestCreateTraining(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -988,6 +1003,7 @@ func TestGetTraining(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1024,6 +1040,7 @@ func TestCancelTraining(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1061,6 +1078,7 @@ func TestListTrainings(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1099,6 +1117,7 @@ func TestListHardware(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1162,6 +1181,7 @@ func TestAutomaticallyRetryGetRequests(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1196,6 +1216,7 @@ func TestAutomaticallyRetryPostRequests(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1275,6 +1296,7 @@ func TestStream(t *testing.T) {
 		replicate.WithToken("test-token"),
 		replicate.WithBaseURL(mockServer.URL),
 	)
+	require.NotNil(t, client)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1287,8 +1309,6 @@ func TestStream(t *testing.T) {
 
 	for _, token := range tokens {
 		select {
-		case <-ctx.Done():
-			t.Fatal("context canceled")
 		case <-time.After(10 * time.Second):
 			t.Fatal("timeout")
 		case event := <-sseChan:

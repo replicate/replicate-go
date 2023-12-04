@@ -69,6 +69,10 @@ func (p Prediction) Progress() *PredictionProgress {
 	re := regexp.MustCompile(pattern)
 
 	lines := strings.Split(*p.Logs, "\n")
+	if len(lines) == 0 {
+		return nil
+	}
+
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := strings.TrimSpace(lines[i])
 		if re.MatchString(line) {
