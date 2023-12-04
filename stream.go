@@ -80,29 +80,33 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 		return sseChan, errChan
 	}
 
-	return r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
+	r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
+
+	return sseChan, errChan
 }
 
 func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (<-chan SSEEvent, <-chan error) {
 	sseChan := make(chan SSEEvent, 64)
 	errChan := make(chan error, 64)
 
-	return r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
+	r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
+
+	return sseChan, errChan
 }
 
-func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) (<-chan SSEEvent, <-chan error) {
+func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) {
 	g, ctx := errgroup.WithContext(ctx)
 
 	url := prediction.URLs["stream"]
 	if url == "" {
-		errChan <- errors.New("streaming not supported")
-		return sseChan, errChan
+		errChan <- errors.New("streaming not supported or not enabled for this prediction")
+		return
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		errChan <- fmt.Errorf("failed to create request: %w", err)
-		return sseChan, errChan
+		return
 	}
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Cache-Control", "no-cache")
@@ -116,12 +120,12 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 	if err != nil {
 		resp.Body.Close()
 		errChan <- fmt.Errorf("failed to send request: %w", err)
-		return sseChan, errChan
+		return
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		errChan <- fmt.Errorf("received invalid status code %d", resp.StatusCode)
-		return sseChan, errChan
+		errChan <- fmt.Errorf("received invalid status code: %d", resp.StatusCode)
+		return
 	}
 
 	done := make(chan struct{})
@@ -135,15 +139,14 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 
 		for {
 			select {
+			case <-ctx.Done():
+				return nil
 			case <-done:
 				return nil
 			default:
 				line, err := reader.ReadBytes('\n')
 				if err != nil {
 					defer resp.Body.Close()
-					if err == io.EOF {
-						return nil
-					}
 					return err
 				}
 				lineChan <- line
@@ -179,6 +182,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 						errChan <- unmarshalAPIError([]byte(event.Data))
 					case "done":
 						close(done)
+						return
 					default:
 						sseChan <- event
 					}
@@ -191,11 +195,23 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 		defer close(sseChan)
 		defer close(errChan)
 
-		err := g.Wait()
-		if err != nil {
-			errChan <- err
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-done:
+				return
+			default:
+				err := g.Wait()
+				if err != nil {
+					if err == io.EOF {
+						// Attempt to reconnect if the connection was closed before the stream was done
+						r.streamPrediction(ctx, prediction, lastEvent, sseChan, errChan)
+						continue
+					}
+					errChan <- err
+				}
+			}
 		}
 	}()
-
-	return sseChan, errChan
 }
