@@ -186,7 +186,7 @@ func (r *Client) request(ctx context.Context, method, path string, body interfac
 		}
 
 		if response.StatusCode < 200 || response.StatusCode >= 400 {
-			apiError = unmarshalAPIError(responseBytes)
+			apiError = unmarshalAPIError(response, responseBytes)
 			if !r.shouldRetry(response, method) {
 				return apiError
 			}
