@@ -186,15 +186,10 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 						errChan <- err
 					}
 
-					if event.Type == "error" {
-						errChan <- unmarshalAPIError(nil, []byte(event.Data))
-					} else {
-						sseChan <- event
-
-						if event.Type == "done" {
-							close(done)
-							return
-						}
+					sseChan <- event
+					if event.Type == "done" {
+						close(done)
+						return
 					}
 				}
 			}
