@@ -9,10 +9,19 @@ import (
 
 // APIError represents an error returned by the Replicate API
 type APIError struct {
-	Type     string `json:"type,omitempty"`
-	Status   int    `json:"status,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Detail   string `json:"detail,omitempty"`
+	// Type is a URI that identifies the error type.
+	Type string `json:"type,omitempty"`
+
+	// Title is a short human-readable summary of the error.
+	Title string `json:"title,omitempty"`
+
+	// Status is the HTTP status code.
+	Status int `json:"status,omitempty"`
+
+	// Detail is a human-readable explanation of the error.
+	Detail string `json:"detail,omitempty"`
+
+	// Instance is a URI that identifies the specific occurrence of the error.
 	Instance string `json:"instance,omitempty"`
 }
 
@@ -30,7 +39,6 @@ func unmarshalAPIError(resp *http.Response, data []byte) *APIError {
 	return &apiError
 }
 
-// Error implements the error interface
 func (e APIError) Error() string {
 	components := []string{}
 	if e.Type != "" {
@@ -66,6 +74,7 @@ func (e *APIError) WriteHTTPResponse(w http.ResponseWriter) {
 	w.WriteHeader(status)
 	err := json.NewEncoder(w).Encode(e)
 	if err != nil {
+		err = fmt.Errorf("failed to write error response: %w", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
