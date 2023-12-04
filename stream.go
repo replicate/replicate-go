@@ -80,17 +80,17 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 		return sseChan, errChan
 	}
 
-	return r.streamPrediction(ctx, prediction, sseChan, errChan)
+	return r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
 }
 
 func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (<-chan SSEEvent, <-chan error) {
 	sseChan := make(chan SSEEvent, 64)
 	errChan := make(chan error, 64)
 
-	return r.streamPrediction(ctx, prediction, sseChan, errChan)
+	return r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
 }
 
-func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, sseChan chan SSEEvent, errChan chan error) (<-chan SSEEvent, <-chan error) {
+func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) (<-chan SSEEvent, <-chan error) {
 	g, ctx := errgroup.WithContext(ctx)
 
 	url := prediction.URLs["stream"]
@@ -107,6 +107,10 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, s
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("Connection", "keep-alive")
+
+	if lastEvent != nil {
+		req.Header.Set("Last-Event-ID", lastEvent.ID)
+	}
 
 	resp, err := r.c.Do(req)
 	if err != nil {
