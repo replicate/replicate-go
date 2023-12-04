@@ -152,6 +152,8 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, s
 			select {
 			case <-ctx.Done():
 				return
+			case <-done:
+				return
 			case b, ok := <-lineChan:
 				if !ok {
 					return
@@ -173,7 +175,6 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, s
 						errChan <- unmarshalAPIError([]byte(event.Data))
 					case "done":
 						close(done)
-						return
 					default:
 						sseChan <- event
 					}
