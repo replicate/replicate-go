@@ -7,6 +7,12 @@ all: test lint
 test:
 	$(GO) test -v ./...
 
-.PHONY: lint
-lint:
+lint: lint-golangci lint-nilaway
+
+.PHONY: lint-golangci
+lint-golangci:
 	$(GO) run github.com/golangci/golangci-lint/cmd/golangci-lint run ./...
+
+.PHONY: lint-nilaway
+lint-nilaway:
+	$(GO) run go.uber.org/nilaway/cmd/nilaway ./...

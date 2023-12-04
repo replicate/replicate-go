@@ -28,13 +28,16 @@ func ParseIdentifier(identifier string) (*Identifier, error) {
 		return nil, ErrInvalidIdentifier
 	}
 
-	owner := parts[0]
-	nameVersion := strings.SplitN(parts[1], ":", 2)
-
-	name := nameVersion[0]
+	var name, owner string
 	var version *string
-	if len(nameVersion) > 1 {
-		version = &nameVersion[1]
+
+	owner = parts[0]
+	name = parts[1]
+
+	subparts := strings.Split(name, ":")
+	if len(subparts) > 1 {
+		name = subparts[0]
+		version = &subparts[1]
 	}
 
 	if owner == "" || name == "" {

@@ -175,7 +175,7 @@ func (r *Client) request(ctx context.Context, method, path string, body interfac
 	attempts := 0
 	for ok := true; ok; ok = attempts < maxRetries {
 		response, err := r.c.Do(request)
-		if err != nil {
+		if err != nil || response == nil {
 			return fmt.Errorf("failed to make request: %w", err)
 		}
 		defer response.Body.Close()
