@@ -58,6 +58,15 @@ func (e *SSEEvent) decode(b []byte) error {
 	return nil
 }
 
+func (e *SSEEvent) String() string {
+	switch e.Type {
+	case "output":
+		return e.Data
+	default:
+		return ""
+	}
+}
+
 func (r *Client) Stream(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook) (<-chan SSEEvent, <-chan error) {
 	sseChan := make(chan SSEEvent, 64)
 	errChan := make(chan error, 64)
@@ -177,14 +186,10 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 						errChan <- err
 					}
 
-					switch event.Type {
-					case "error":
-						errChan <- unmarshalAPIError(nil, []byte(event.Data))
-					case "done":
+					sseChan <- event
+					if event.Type == "done" {
 						close(done)
 						return
-					default:
-						sseChan <- event
 					}
 				}
 			}
