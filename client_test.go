@@ -1563,3 +1563,40 @@ func TestDeleteFile(t *testing.T) {
 	err = client.DeleteFile(ctx, fileID)
 	assert.NoError(t, err)
 }
+
+func TestGetCurrentAccount(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/account", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		account := replicate.Account{
+			Type:      "organization",
+			Username:  "replicate",
+			Name:      "Replicate",
+			GithubURL: "https://github.com/replicate",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(account)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	account, err := client.GetCurrentAccount(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, "organization", account.Type)
+	assert.Equal(t, "replicate", account.Username)
+	assert.Equal(t, "Replicate", account.Name)
+	assert.Equal(t, "https://github.com/replicate", account.GithubURL)
+}
