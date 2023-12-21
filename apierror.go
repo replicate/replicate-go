@@ -29,7 +29,7 @@ func unmarshalAPIError(resp *http.Response, data []byte) *APIError {
 	apiError := APIError{}
 	err := json.Unmarshal(data, &apiError)
 	if err != nil {
-		apiError.Detail = fmt.Sprintf("Unknown error: %s", err)
+		apiError.Detail = fmt.Sprintf("Unknown error: %s %v", err, string(data))
 	}
 
 	if apiError.Status == 0 && resp != nil {
