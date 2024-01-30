@@ -23,7 +23,7 @@ func (r *Client) CreateTraining(ctx context.Context, model_owner string, model_n
 
 	training := &Training{}
 	path := fmt.Sprintf("/models/%s/%s/versions/%s/trainings", model_owner, model_name, version)
-	err := r.request(ctx, "POST", path, data, training)
+	err := r.fetch(ctx, "POST", path, data, training)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create training: %w", err)
 	}
@@ -34,7 +34,7 @@ func (r *Client) CreateTraining(ctx context.Context, model_owner string, model_n
 // GetTraining sends a request to the Replicate API to get a training.
 func (r *Client) GetTraining(ctx context.Context, trainingID string) (*Training, error) {
 	training := &Training{}
-	err := r.request(ctx, "GET", fmt.Sprintf("/trainings/%s", trainingID), nil, training)
+	err := r.fetch(ctx, "GET", fmt.Sprintf("/trainings/%s", trainingID), nil, training)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get training: %w", err)
 	}
@@ -45,7 +45,7 @@ func (r *Client) GetTraining(ctx context.Context, trainingID string) (*Training,
 // CancelTraining sends a request to the Replicate API to cancel a training.
 func (r *Client) CancelTraining(ctx context.Context, trainingID string) (*Training, error) {
 	training := &Training{}
-	err := r.request(ctx, "POST", fmt.Sprintf("/trainings/%s/cancel", trainingID), nil, training)
+	err := r.fetch(ctx, "POST", fmt.Sprintf("/trainings/%s/cancel", trainingID), nil, training)
 	if err != nil {
 		return nil, fmt.Errorf("failed to cancel training: %w", err)
 	}
@@ -56,7 +56,7 @@ func (r *Client) CancelTraining(ctx context.Context, trainingID string) (*Traini
 // ListTrainings returns a list of trainings.
 func (r *Client) ListTrainings(ctx context.Context) (*Page[Training], error) {
 	response := &Page[Training]{}
-	err := r.request(ctx, "GET", "/trainings", nil, response)
+	err := r.fetch(ctx, "GET", "/trainings", nil, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list trainings: %w", err)
 	}

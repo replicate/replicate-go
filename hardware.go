@@ -32,7 +32,7 @@ func (h *Hardware) UnmarshalJSON(data []byte) error {
 // ListHardware returns a list of available hardware.
 func (r *Client) ListHardware(ctx context.Context) (*[]Hardware, error) {
 	response := &[]Hardware{}
-	err := r.request(ctx, "GET", "/hardware", nil, response)
+	err := r.fetch(ctx, "GET", "/hardware", nil, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list collections: %w", err)
 	}

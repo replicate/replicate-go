@@ -44,7 +44,7 @@ func Paginate[T any](ctx context.Context, client *Client, initialPage *Page[T]) 
 
 		for nextURL != nil {
 			page := &Page[T]{}
-			err := client.request(ctx, "GET", *nextURL, nil, page)
+			err := client.fetch(ctx, "GET", *nextURL, nil, page)
 			if err != nil {
 				errChan <- err
 				return

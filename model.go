@@ -77,7 +77,7 @@ func (m *ModelVersion) UnmarshalJSON(data []byte) error {
 // ListModels lists public models.
 func (r *Client) ListModels(ctx context.Context) (*Page[Model], error) {
 	response := &Page[Model]{}
-	err := r.request(ctx, "GET", "/models", nil, response)
+	err := r.fetch(ctx, "GET", "/models", nil, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list models: %w", err)
 	}
@@ -87,7 +87,7 @@ func (r *Client) ListModels(ctx context.Context) (*Page[Model], error) {
 // GetModel retrieves information about a model.
 func (r *Client) GetModel(ctx context.Context, modelOwner string, modelName string) (*Model, error) {
 	model := &Model{}
-	err := r.request(ctx, "GET", fmt.Sprintf("/models/%s/%s", modelOwner, modelName), nil, model)
+	err := r.fetch(ctx, "GET", fmt.Sprintf("/models/%s/%s", modelOwner, modelName), nil, model)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get model: %w", err)
 	}
@@ -108,7 +108,7 @@ func (r *Client) CreateModel(ctx context.Context, modelOwner string, modelName s
 		CreateModelOptions: options,
 	}
 
-	err := r.request(ctx, "POST", "/models", body, model)
+	err := r.fetch(ctx, "POST", "/models", body, model)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create model: %w", err)
 	}
@@ -118,7 +118,7 @@ func (r *Client) CreateModel(ctx context.Context, modelOwner string, modelName s
 // ListModelVersions lists the versions of a model.
 func (r *Client) ListModelVersions(ctx context.Context, modelOwner string, modelName string) (*Page[ModelVersion], error) {
 	response := &Page[ModelVersion]{}
-	err := r.request(ctx, "GET", fmt.Sprintf("/models/%s/%s/versions", modelOwner, modelName), nil, response)
+	err := r.fetch(ctx, "GET", fmt.Sprintf("/models/%s/%s/versions", modelOwner, modelName), nil, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list model versions: %w", err)
 	}
@@ -128,7 +128,7 @@ func (r *Client) ListModelVersions(ctx context.Context, modelOwner string, model
 // GetModelVersion retrieves a specific version of a model.
 func (r *Client) GetModelVersion(ctx context.Context, modelOwner string, modelName string, versionID string) (*ModelVersion, error) {
 	version := &ModelVersion{}
-	err := r.request(ctx, "GET", fmt.Sprintf("/models/%s/%s/versions/%s", modelOwner, modelName, versionID), nil, version)
+	err := r.fetch(ctx, "GET", fmt.Sprintf("/models/%s/%s/versions/%s", modelOwner, modelName, versionID), nil, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get model version: %w", err)
 	}
@@ -151,7 +151,7 @@ func (r *Client) CreatePredictionWithModel(ctx context.Context, modelOwner strin
 	}
 
 	prediction := &Prediction{}
-	err := r.request(ctx, "POST", fmt.Sprintf("/models/%s/%s/predictions", modelOwner, modelName), data, prediction)
+	err := r.fetch(ctx, "POST", fmt.Sprintf("/models/%s/%s/predictions", modelOwner, modelName), data, prediction)
 	if err != nil {
 		return nil, err
 	}
