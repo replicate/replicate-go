@@ -2,9 +2,14 @@ package replicate_test
 
 import (
 	"context"
+	"crypto/md5" // nolint:gosec
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -1139,7 +1144,6 @@ func TestAutomaticallyRetryGetRequests(t *testing.T) {
 
 	i := 0
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		status := statuses[i]
 		i++
 
@@ -1317,4 +1321,213 @@ func TestStream(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
+}
+
+func TestCreateFile(t *testing.T) {
+	fileID := "file-id"
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/files", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+
+		_, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		mr := multipart.NewReader(r.Body, params["boundary"])
+		defer r.Body.Close()
+
+		part, err := mr.NextPart()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Equal(t, "form-data; name=\"content\"; filename=\"hello.txt\"", part.Header.Get("Content-Disposition"))
+		assert.Equal(t, "text/plain", part.Header.Get("Content-Type"))
+
+		content, err := io.ReadAll(part)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		etag := fmt.Sprintf("%x", md5.Sum(content)) // nolint:gosec
+		checksum := sha256.Sum256(content)
+		file := &replicate.File{
+			ID:          fileID,
+			Name:        "hello.txt",
+			ContentType: "text/plain",
+			Size:        len(content),
+			Etag:        etag,
+			Checksums:   map[string]string{"sha256": hex.EncodeToString(checksum[:])},
+			Metadata:    map[string]string{"foo": "bar"},
+			CreatedAt:   "2022-04-26T22:13:06.224088Z",
+			URLs:        map[string]string{"get": "https://api.replicate.com/v1/files/" + fileID},
+		}
+
+		responseBytes, err := json.Marshal(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	options := &replicate.CreateFileOptions{
+		Filename:    "hello.txt",
+		ContentType: "text/plain",
+		Metadata:    map[string]string{"foo": "bar"},
+	}
+	file, err := client.CreateFileFromBytes(ctx, []byte("Hello, world!"), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, fileID, file.ID)
+	assert.Equal(t, "hello.txt", file.Name)
+	assert.Equal(t, "text/plain", file.ContentType)
+	assert.Equal(t, 13, file.Size)
+	assert.Equal(t, "6cd3556deb0da54bca060b4c39479839", file.Etag)
+	assert.Equal(t, "315f5bdb76d078c43b8ac0064e4a0164612b1fce77c869345bfc94c75894edd3", file.Checksums["sha256"])
+	assert.Equal(t, map[string]string{"foo": "bar"}, file.Metadata)
+	assert.Equal(t, "2022-04-26T22:13:06.224088Z", file.CreatedAt)
+	assert.Equal(t, "https://api.replicate.com/v1/files/"+fileID, file.URLs["get"])
+}
+
+func TestListFiles(t *testing.T) {
+	fileID := "file-id"
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/files", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		response := replicate.Page[replicate.File]{
+			Results: []replicate.File{
+				{
+					ID:          fileID,
+					Name:        "hello.txt",
+					ContentType: "text/plain",
+					Size:        13,
+					CreatedAt:   "2022-04-26T22:13:06.224088Z",
+					URLs:        map[string]string{"get": "https://api.replicate.com/v1/files/" + fileID},
+				},
+			},
+		}
+
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	files, err := client.ListFiles(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, len(files.Results))
+	assert.Nil(t, files.Previous)
+	assert.Nil(t, files.Next)
+
+	file := files.Results[0]
+	assert.Equal(t, fileID, file.ID)
+	assert.Equal(t, "hello.txt", file.Name)
+	assert.Equal(t, "text/plain", file.ContentType)
+	assert.Equal(t, 13, file.Size)
+	assert.Equal(t, "2022-04-26T22:13:06.224088Z", file.CreatedAt)
+	assert.Equal(t, "https://api.replicate.com/v1/files/"+fileID, file.URLs["get"])
+}
+func TestGetFile(t *testing.T) {
+	fileID := "file-id"
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/files/"+fileID, r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		file := &replicate.File{
+			ID:          fileID,
+			Name:        "hello.txt",
+			ContentType: "text/plain",
+			Size:        13,
+			CreatedAt:   "2022-04-26T22:13:06.224088Z",
+			URLs:        map[string]string{"get": "https://api.replicate.com/v1/files/" + fileID},
+		}
+
+		responseBytes, err := json.Marshal(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	file, err := client.GetFile(ctx, fileID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, fileID, file.ID)
+	assert.Equal(t, "hello.txt", file.Name)
+	assert.Equal(t, "text/plain", file.ContentType)
+	assert.Equal(t, 13, file.Size)
+	assert.Equal(t, "2022-04-26T22:13:06.224088Z", file.CreatedAt)
+	assert.Equal(t, "https://api.replicate.com/v1/files/"+fileID, file.URLs["get"])
+}
+
+func TestDeleteFile(t *testing.T) {
+	fileID := "file-id"
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/files/"+fileID, r.URL.Path)
+		assert.Equal(t, http.MethodDelete, r.Method)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = client.DeleteFile(ctx, fileID)
+	assert.NoError(t, err)
 }
