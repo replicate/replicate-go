@@ -1392,6 +1392,7 @@ func TestCreateFile(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	t.Run("CreateFileFromBytes", func(t *testing.T) {
 		content := []byte("Hello, world!")
 		file, err := client.CreateFileFromBytes(ctx, content, options)
