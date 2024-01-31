@@ -22,7 +22,7 @@ func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deployment_
 
 	prediction := &Prediction{}
 	path := fmt.Sprintf("/deployments/%s/%s/predictions", deployment_owner, deployment_name)
-	err := r.request(ctx, "POST", path, data, prediction)
+	err := r.fetch(ctx, "POST", path, data, prediction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prediction: %w", err)
 	}

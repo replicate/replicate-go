@@ -145,21 +145,11 @@ func WithRetryPolicy(maxRetries int, backoff Backoff) ClientOption {
 	}
 }
 
-// request makes an HTTP request to the Replicate API.
-func (r *Client) request(ctx context.Context, method, path string, body interface{}, out interface{}) error {
-	bodyBuffer := &bytes.Buffer{}
-	if body != nil {
-		bodyBytes, err := json.Marshal(body)
-		if err != nil {
-			return fmt.Errorf("failed to marshal request body: %w", err)
-		}
-		bodyBuffer = bytes.NewBuffer(bodyBytes)
-	}
-
+func (r *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
 	url := constructURL(r.options.baseURL, path)
-	request, err := http.NewRequestWithContext(ctx, method, url, bodyBuffer)
+	request, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	request.Header.Set("Content-Type", "application/json")
@@ -168,6 +158,10 @@ func (r *Client) request(ctx context.Context, method, path string, body interfac
 		request.Header.Set("User-Agent", *r.options.userAgent)
 	}
 
+	return request, nil
+}
+
+func (r *Client) do(ctx context.Context, request *http.Request, out interface{}) error {
 	maxRetries := r.options.retryPolicy.maxRetries
 	backoff := r.options.retryPolicy.backoff
 
@@ -187,7 +181,7 @@ func (r *Client) request(ctx context.Context, method, path string, body interfac
 
 		if response.StatusCode < 200 || response.StatusCode >= 400 {
 			apiError = unmarshalAPIError(response, responseBytes)
-			if !r.shouldRetry(response, method) {
+			if !r.shouldRetry(response, request.Method) {
 				return apiError
 			}
 
@@ -227,6 +221,25 @@ func (r *Client) request(ctx context.Context, method, path string, body interfac
 	}
 
 	return fmt.Errorf("request failed")
+}
+
+// fetch makes an HTTP request to Replicate's API.
+func (r *Client) fetch(ctx context.Context, method, path string, body interface{}, out interface{}) error {
+	bodyBuffer := &bytes.Buffer{}
+	if body != nil {
+		bodyBytes, err := json.Marshal(body)
+		if err != nil {
+			return fmt.Errorf("failed to marshal request body: %w", err)
+		}
+		bodyBuffer = bytes.NewBuffer(bodyBytes)
+	}
+
+	request, err := r.newRequest(ctx, method, path, bodyBuffer)
+	if err != nil {
+		return err
+	}
+
+	return r.do(ctx, request, out)
 }
 
 // shouldRetry returns true if the request should be retried.
