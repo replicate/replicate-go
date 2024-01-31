@@ -1,6 +1,7 @@
 package replicate_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5" // nolint:gosec
 	"crypto/sha256"
@@ -12,6 +13,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -1325,6 +1328,12 @@ func TestStream(t *testing.T) {
 
 func TestCreateFile(t *testing.T) {
 	fileID := "file-id"
+	options := &replicate.CreateFileOptions{
+		Filename:    "hello.txt",
+		ContentType: "text/plain",
+		Metadata:    map[string]string{"foo": "bar"},
+	}
+
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/files", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -1383,17 +1392,39 @@ func TestCreateFile(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	t.Run("CreateFileFromBytes", func(t *testing.T) {
+		content := []byte("Hello, world!")
+		file, err := client.CreateFileFromBytes(ctx, content, options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertCreatedFile(t, fileID, file)
+	})
 
-	options := &replicate.CreateFileOptions{
-		Filename:    "hello.txt",
-		ContentType: "text/plain",
-		Metadata:    map[string]string{"foo": "bar"},
-	}
-	file, err := client.CreateFileFromBytes(ctx, []byte("Hello, world!"), options)
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Run("CreateFileFromBuffer", func(t *testing.T) {
+		buf := bytes.NewBufferString("Hello, world!")
+		file, err := client.CreateFileFromBuffer(ctx, buf, options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertCreatedFile(t, fileID, file)
+	})
 
+	t.Run("CreateFileFromPath", func(t *testing.T) {
+		content := []byte("Hello, world!")
+		tmpFilePath := filepath.Join(t.TempDir(), "hello.txt")
+		if err := os.WriteFile(tmpFilePath, content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		file, err := client.CreateFileFromPath(ctx, tmpFilePath, options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertCreatedFile(t, fileID, file)
+	})
+}
+
+func assertCreatedFile(t *testing.T, fileID string, file *replicate.File) {
 	assert.Equal(t, fileID, file.ID)
 	assert.Equal(t, "hello.txt", file.Name)
 	assert.Equal(t, "text/plain", file.ContentType)
