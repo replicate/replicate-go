@@ -1635,17 +1635,19 @@ func TestGetDefaultWebhookSecret(t *testing.T) {
 }
 
 func TestValidateWebhook(t *testing.T) {
+	// Test case from https://github.com/svix/svix-webhooks/blob/b41728cd98a7e7004a6407a623f43977b82fcba4/javascript/src/webhook.test.ts#L190-L200
+
 	// This is a test secret and should not be used in production
 	testSecret := replicate.WebhookSigningSecret{
-		Key: "whsec_5WbX5kEWLlfzsGNjH64I8lOOqUB6e8FH", // nolint:gosec
+		Key: "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw", // nolint:gosec
 	}
 
-	body := `{event:"output",data:"Hello, world!"}`
+	body := `{"test": 2432232314}`
 	req := httptest.NewRequest(http.MethodPost, "http://test.host/webhook", strings.NewReader(body))
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Webhook-ID", "123")
-	req.Header.Add("Webhook-Timestamp", "1707329251")
-	req.Header.Add("Webhook-Signature", "v1,nSIlB+PQG9cA4fNl6ec/aOmwxZktHIR5L0ymA5/Cm3E=")
+	req.Header.Add("Webhook-ID", "msg_p5jXN8AQM9LWM0D4loKWxJek")
+	req.Header.Add("Webhook-Timestamp", "1614265330")
+	req.Header.Add("Webhook-Signature", "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=")
 
 	isValid, err := replicate.ValidateWebhookRequest(req, testSecret)
 	require.NoError(t, err)
