@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -1599,4 +1600,56 @@ func TestGetCurrentAccount(t *testing.T) {
 	assert.Equal(t, "replicate", account.Username)
 	assert.Equal(t, "Replicate", account.Name)
 	assert.Equal(t, "https://github.com/replicate", account.GithubURL)
+}
+
+func TestGetDefaultWebhookSecret(t *testing.T) {
+	// This is a test secret and should not be used in production
+	testSecret := replicate.WebhookSigningSecret{
+		Key: "whsec_5WbX5kEWLlfzsGNjH64I8lOOqUB6e8FH", // nolint:gosec
+	}
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/webhooks/default/secret", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body, _ := json.Marshal(testSecret)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	secret, err := client.GetDefaultWebhookSecret(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, testSecret.Key, secret.Key)
+}
+
+func TestValidateWebhook(t *testing.T) {
+	// Test case from https://github.com/svix/svix-webhooks/blob/b41728cd98a7e7004a6407a623f43977b82fcba4/javascript/src/webhook.test.ts#L190-L200
+
+	// This is a test secret and should not be used in production
+	testSecret := replicate.WebhookSigningSecret{
+		Key: "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw", // nolint:gosec
+	}
+
+	body := `{"test": 2432232314}`
+	req := httptest.NewRequest(http.MethodPost, "http://test.host/webhook", strings.NewReader(body))
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Webhook-ID", "msg_p5jXN8AQM9LWM0D4loKWxJek")
+	req.Header.Add("Webhook-Timestamp", "1614265330")
+	req.Header.Add("Webhook-Signature", "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=")
+
+	isValid, err := replicate.ValidateWebhookRequest(req, testSecret)
+	require.NoError(t, err)
+	assert.True(t, isValid)
 }
