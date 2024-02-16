@@ -1653,3 +1653,69 @@ func TestValidateWebhook(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, isValid)
 }
+
+func TestGetDeployment(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/deployments/acme/image-upscaler", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		deployment := &replicate.Deployment{
+			Owner: "acme",
+			Name:  "image-upscaler",
+			CurrentRelease: replicate.DeploymentRelease{
+				Number:    1,
+				Model:     "acme/esrgan",
+				Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				CreatedAt: "2022-01-01T00:00:00Z",
+				CreatedBy: replicate.Account{
+					Type:     "organization",
+					Username: "acme",
+					Name:     "Acme, Inc.",
+				},
+				Configuration: replicate.DeploymentConfiguration{
+					Hardware:     "gpu-t4",
+					MinInstances: 1,
+					MaxInstances: 5,
+				},
+			},
+		}
+
+		responseBytes, err := json.Marshal(deployment)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	deployment, err := client.GetDeployment(ctx, "acme", "image-upscaler")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotNil(t, deployment)
+	assert.Equal(t, "acme", deployment.Owner)
+	assert.Equal(t, "image-upscaler", deployment.Name)
+	assert.Equal(t, 1, deployment.CurrentRelease.Number)
+	assert.Equal(t, "acme/esrgan", deployment.CurrentRelease.Model)
+	assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", deployment.CurrentRelease.Version)
+	assert.Equal(t, "2022-01-01T00:00:00Z", deployment.CurrentRelease.CreatedAt)
+	assert.Equal(t, "organization", deployment.CurrentRelease.CreatedBy.Type)
+	assert.Equal(t, "acme", deployment.CurrentRelease.CreatedBy.Username)
+	assert.Equal(t, "Acme, Inc.", deployment.CurrentRelease.CreatedBy.Name)
+	assert.Equal(t, "gpu-t4", deployment.CurrentRelease.Configuration.Hardware)
+	assert.Equal(t, 1, deployment.CurrentRelease.Configuration.MinInstances)
+	assert.Equal(t, 5, deployment.CurrentRelease.Configuration.MaxInstances)
+}
