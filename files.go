@@ -41,6 +41,10 @@ func (r *Client) CreateFileFromPath(ctx context.Context, filePath string, option
 	}
 	defer f.Close()
 
+	if options == nil {
+		options = &CreateFileOptions{}
+	}
+
 	if options.Filename == "" {
 		_, options.Filename = filepath.Split(filePath)
 	}
@@ -52,27 +56,35 @@ func (r *Client) CreateFileFromPath(ctx context.Context, filePath string, option
 		}
 	}
 
-	return r.createFile(ctx, f, options)
+	return r.createFile(ctx, f, *options)
 }
 
 // CreateFileFromBytes creates a new file from bytes.
 func (r *Client) CreateFileFromBytes(ctx context.Context, data []byte, options *CreateFileOptions) (*File, error) {
 	buf := bytes.NewBuffer(data)
 
+	if options == nil {
+		options = &CreateFileOptions{}
+	}
+
 	if options.ContentType == "" {
 		options.ContentType = http.DetectContentType(data)
 	}
 
-	return r.createFile(ctx, buf, options)
+	return r.createFile(ctx, buf, *options)
 }
 
 // CreateFileFromBuffer creates a new file from a buffer.
 func (r *Client) CreateFileFromBuffer(ctx context.Context, buf *bytes.Buffer, options *CreateFileOptions) (*File, error) {
-	return r.createFile(ctx, buf, options)
+	if options == nil {
+		options = &CreateFileOptions{}
+	}
+
+	return r.createFile(ctx, buf, *options)
 }
 
 // CreateFile creates a new file.
-func (r *Client) createFile(ctx context.Context, reader io.Reader, options *CreateFileOptions) (*File, error) {
+func (r *Client) createFile(ctx context.Context, reader io.Reader, options CreateFileOptions) (*File, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
