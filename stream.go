@@ -133,6 +133,9 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return
+		}
 		errChan <- fmt.Errorf("failed to create request: %w", err)
 		return
 	}
@@ -148,6 +151,10 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 	if err != nil || resp == nil {
 		if resp != nil {
 			resp.Body.Close()
+		}
+
+		if errors.Is(err, context.Canceled) {
+			return
 		}
 		errChan <- fmt.Errorf("failed to send request: %w", err)
 		return
