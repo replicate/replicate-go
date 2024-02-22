@@ -141,3 +141,12 @@ func (r *Client) GetPrediction(ctx context.Context, id string) (*Prediction, err
 	}
 	return prediction, nil
 }
+
+func (r *Client) CancelPrediction(ctx context.Context, id string) (*Prediction, error) {
+	prediction := &Prediction{}
+	err := r.fetch(ctx, "POST", fmt.Sprintf("/predictions/%s/cancel", id), nil, prediction)
+	if err != nil {
+		return nil, fmt.Errorf("failed to cancel prediction: %w", err)
+	}
+	return prediction, nil
+}
