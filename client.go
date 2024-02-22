@@ -74,7 +74,11 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		}
 	}
 	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+		err := errors.Join(errs...)
+		if err != nil {
+			return nil, err
+		}
+		return nil, errors.New("failed to apply options")
 	}
 
 	if c.options.auth == "" {

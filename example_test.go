@@ -13,7 +13,7 @@ func ExampleClient_Run() {
 	// You can also provide a token directly with `replicate.NewClient(replicate.WithToken("r8_..."))`
 	r8, err := replicate.NewClient(replicate.WithTokenFromEnv())
 	if err != nil {
-		// handle error
+		return
 	}
 
 	// https://replicate.com/stability-ai/stable-diffusion
@@ -31,7 +31,7 @@ func ExampleClient_Run() {
 	// Run a model and wait for its output
 	output, err := r8.Run(ctx, version, input, &webhook)
 	if err != nil {
-		// handle error
+		return
 	}
 	fmt.Println("output: ", output)
 }
@@ -42,7 +42,7 @@ func ExampleClient_CreatePrediction() {
 	// You can also provide a token directly with `replicate.NewClient(replicate.WithToken("r8_..."))`
 	r8, err := replicate.NewClient(replicate.WithTokenFromEnv())
 	if err != nil {
-		// handle error
+		return
 	}
 
 	// https://replicate.com/stability-ai/stable-diffusion
@@ -63,13 +63,13 @@ func ExampleClient_CreatePrediction() {
 	// call `Wait` on the prediction, and access its `Output` field.
 	prediction, err := r8.CreatePrediction(ctx, version, input, &webhook, false)
 	if err != nil {
-		// handle error
+		return
 	}
 
 	// Wait for the prediction to finish
 	err = r8.Wait(ctx, prediction)
 	if err != nil {
-		// handle error
+		return
 	}
 	fmt.Println("output: ", prediction.Output)
 }
