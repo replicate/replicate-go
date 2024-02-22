@@ -53,6 +53,33 @@ webhook := replicate.Webhook{
 prediction, err := client.CreatePrediction(context.Background(), version, input, &webhook)
 ```
 
+If calling a model without a webhook, poll for the response:
+
+```go
+prediction, err := replicateClient.CreatePrediction(ctx, replicateModelVersion, input, nil, false)
+if err != nil {
+	log.Fatalf("Error creating prediction: %v", err)
+}
+
+result, err := replicateClient.GetPrediction(ctx, prediction.ID)
+if err != nil {
+	log.Fatalf("Error getting prediction: %v", err)
+}
+
+for {
+	if result.Status != "processing" {
+		break
+	}
+
+	time.Sleep(1 * time.Second)
+
+	result, err = replicateClient.GetPrediction(ctx, prediction.ID)
+	if err != nil {
+		log.Fatalf("Error getting prediction: %v", err)
+	}
+}
+```
+
 ## License
 
 Replicate's Go client is released under the Apache 2.0 license.
