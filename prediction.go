@@ -142,6 +142,7 @@ func (r *Client) GetPrediction(ctx context.Context, id string) (*Prediction, err
 	return prediction, nil
 }
 
+// CancelPrediction cancels a running prediction by its ID.
 func (r *Client) CancelPrediction(ctx context.Context, id string) (*Prediction, error) {
 	prediction := &Prediction{}
 	err := r.fetch(ctx, "POST", fmt.Sprintf("/predictions/%s/cancel", id), nil, prediction)
