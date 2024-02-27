@@ -610,6 +610,41 @@ func TestCreatePredictionWithModel(t *testing.T) {
 	assert.Equal(t, replicate.Starting, prediction.Status)
 }
 
+func TestCancelPrediction(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/predictions/ufawqhfynnddngldkgtslldrkq/cancel", r.URL.Path)
+
+		response := replicate.Prediction{
+			ID:     "ufawqhfynnddngldkgtslldrkq",
+			Status: replicate.Canceled,
+		}
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	prediction, err := client.CancelPrediction(ctx, "ufawqhfynnddngldkgtslldrkq")
+	assert.NoError(t, err)
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
+	assert.Equal(t, replicate.Canceled, prediction.Status)
+}
+
 func TestPredictionProgress(t *testing.T) {
 	prediction := replicate.Prediction{
 		ID:        "ufawqhfynnddngldkgtslldrkq",

@@ -31,6 +31,16 @@ func (r *Client) CreateTraining(ctx context.Context, model_owner string, model_n
 	return training, nil
 }
 
+// ListTrainings returns a list of trainings.
+func (r *Client) ListTrainings(ctx context.Context) (*Page[Training], error) {
+	response := &Page[Training]{}
+	err := r.fetch(ctx, "GET", "/trainings", nil, response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list trainings: %w", err)
+	}
+	return response, nil
+}
+
 // GetTraining sends a request to the Replicate API to get a training.
 func (r *Client) GetTraining(ctx context.Context, trainingID string) (*Training, error) {
 	training := &Training{}
@@ -51,14 +61,4 @@ func (r *Client) CancelTraining(ctx context.Context, trainingID string) (*Traini
 	}
 
 	return training, nil
-}
-
-// ListTrainings returns a list of trainings.
-func (r *Client) ListTrainings(ctx context.Context) (*Page[Training], error) {
-	response := &Page[Training]{}
-	err := r.fetch(ctx, "GET", "/trainings", nil, response)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list trainings: %w", err)
-	}
-	return response, nil
 }
