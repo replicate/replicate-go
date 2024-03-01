@@ -18,10 +18,9 @@ type Collection struct {
 func (c Collection) MarshalJSON() ([]byte, error) {
 	if c.rawJSON != nil {
 		return c.rawJSON, nil
-	} else {
-		type Alias Collection
-		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&c)})
 	}
+	type Alias Collection
+	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&c)})
 }
 
 func (c *Collection) UnmarshalJSON(data []byte) error {

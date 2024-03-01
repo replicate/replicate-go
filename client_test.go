@@ -1183,6 +1183,8 @@ func TestAutomaticallyRetryGetRequests(t *testing.T) {
 
 	i := 0
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+
 		status := statuses[i]
 		i++
 
@@ -1240,6 +1242,8 @@ func TestAutomaticallyRetryPostRequests(t *testing.T) {
 
 	i := 0
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+
 		status := statuses[i]
 		i++
 
@@ -1281,7 +1285,8 @@ func TestStream(t *testing.T) {
 
 	mockServer := httptest.NewUnstartedServer(nil)
 	mockServer.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" && r.URL.Path == "/predictions" {
+		switch {
+		case r.Method == "POST" && r.URL.Path == "/predictions":
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Fatal(err)
@@ -1316,7 +1321,7 @@ func TestStream(t *testing.T) {
 
 			w.WriteHeader(http.StatusCreated)
 			w.Write(responseBytes)
-		} else if r.Method == "GET" && r.URL.Path == "/predictions/ufawqhfynnddngldkgtslldrkq/stream" {
+		case r.Method == "GET" && r.URL.Path == "/predictions/ufawqhfynnddngldkgtslldrkq/stream":
 			flusher, _ := w.(http.Flusher)
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.Header().Set("Cache-Control", "no-cache")
@@ -1327,7 +1332,7 @@ func TestStream(t *testing.T) {
 				flusher.Flush()
 				time.Sleep(time.Millisecond * 10)
 			}
-		} else {
+		default:
 			t.Fatalf("Unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 	})

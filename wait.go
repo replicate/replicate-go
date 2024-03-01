@@ -33,7 +33,8 @@ func (r *Client) Wait(ctx context.Context, prediction *Prediction, opts ...WaitO
 	predChan, errChan := r.WaitAsync(ctx, prediction, opts...)
 
 	go func() {
-		for range predChan {
+		for range predChan { //nolint:all
+			// Drain the channel
 		}
 	}()
 
@@ -91,7 +92,7 @@ func (r *Client) WaitAsync(ctx context.Context, prediction *Prediction, opts ...
 					return
 				}
 
-				attempts += 1
+				attempts++
 			case <-ctx.Done():
 				errChan <- ctx.Err()
 				return

@@ -17,10 +17,9 @@ type Page[T any] struct {
 func (p Page[T]) MarshalJSON() ([]byte, error) {
 	if p.rawJSON != nil {
 		return p.rawJSON, nil
-	} else {
-		type Alias Page[T]
-		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
 	}
+	type Alias Page[T]
+	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
 }
 
 func (p *Page[T]) UnmarshalJSON(data []byte) error {

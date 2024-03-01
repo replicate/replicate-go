@@ -18,7 +18,7 @@ type ConstantBackoff struct {
 }
 
 // NextDelay returns the next delay.
-func (b *ConstantBackoff) NextDelay(retries int) time.Duration {
+func (b *ConstantBackoff) NextDelay(_ int) time.Duration {
 	jitter := time.Duration(rand.Float64() * float64(b.Jitter)) //#nosec G404
 	return b.Base + jitter
 }
