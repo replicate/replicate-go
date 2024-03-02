@@ -136,7 +136,7 @@ func (r *Client) GetModelVersion(ctx context.Context, modelOwner string, modelNa
 	return version, nil
 }
 
-// DeleteModelVersion a model version and all associated predictions, including all output files.
+// DeleteModelVersion deletes a model version and all associated predictions, including all output files.
 func (r *Client) DeleteModelVersion(ctx context.Context, modelOwner string, modelName string, versionID string) error {
 	err := r.fetch(ctx, http.MethodDelete, fmt.Sprintf("/models/%s/%s/versions/%s", modelOwner, modelName, versionID), nil, nil)
 	if err != nil {
