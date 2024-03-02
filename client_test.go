@@ -316,6 +316,32 @@ func TestCreateModel(t *testing.T) {
 	assert.Equal(t, "", model.Description)
 }
 
+func TestDeleteModelVersion(t *testing.T) {
+	modelName := "replicate"
+	modelOwner := "hello-world"
+	versionID := "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa"
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, fmt.Sprintf("/models/%s/%s/versions/%s", modelOwner, modelName, versionID), r.URL.Path)
+		w.WriteHeader(http.StatusAccepted)
+
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = client.DeleteModelVersion(ctx, modelOwner, modelName, versionID)
+	assert.NoError(t, err)
+}
+
 func TestListModelVersions(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/models/replicate/hello-world/versions", r.URL.Path)
