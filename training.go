@@ -8,6 +8,14 @@ import (
 type Training Prediction
 type TrainingInput PredictionInput
 
+type createTrainingBody struct {
+	Version             *string            `json:"version,omitempty"`
+	Input               TrainingInput      `json:"input"`
+	Webhook             *string            `json:"webhook,omitempty"`
+	WebhookEventsFilter []WebhookEventType `json:"webhook_events_filter,omitempty"`
+}
+type CreateTrainingOption func(path *string, body *createTrainingBody)
+
 // CreateTraining sends a request to the Replicate API to create a new training.
 func (r *Client) CreateTraining(ctx context.Context, model_owner string, model_name string, version string, destination string, input TrainingInput, webhook *Webhook) (*Training, error) {
 	data := map[string]interface{}{
