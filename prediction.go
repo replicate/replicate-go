@@ -97,31 +97,94 @@ func (p Prediction) Progress() *PredictionProgress {
 type PredictionInput map[string]interface{}
 type PredictionOutput interface{}
 
-// CreatePrediction sends a request to the Replicate API to create a prediction.
-func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
-	data := map[string]interface{}{
-		"version": version,
-		"input":   input,
-	}
+type createPredictionBody struct {
+	Version             *string            `json:"version,omitempty"`
+	Input               PredictionInput    `json:"input"`
+	Webhook             *string            `json:"webhook,omitempty"`
+	WebhookEventsFilter []WebhookEventType `json:"webhook_events_filter,omitempty"`
+	Stream              *bool              `json:"stream,omitempty"`
+}
+type CreatePredictionOption func(path *string, body *createPredictionBody)
 
-	if webhook != nil {
-		data["webhook"] = webhook.URL
-		if len(webhook.Events) > 0 {
-			data["webhook_events_filter"] = webhook.Events
+func WithModel(owner string, name string) CreatePredictionOption {
+	return func(path *string, body *createPredictionBody) {
+		(*path) = fmt.Sprintf("/models/%s/%s/predictions", owner, name)
+		body.Version = nil
+	}
+}
+
+func WithModelVersion(_owner string, _name string, version string) CreatePredictionOption {
+	return func(path *string, body *createPredictionBody) {
+		(*path) = "/predictions"
+		body.Version = &version
+	}
+}
+
+func WithVersion(version string) CreatePredictionOption {
+	return func(path *string, body *createPredictionBody) {
+		(*path) = "/predictions"
+		body.Version = &version
+	}
+}
+
+func WithDeployment(owner string, name string) CreatePredictionOption {
+	return func(path *string, body *createPredictionBody) {
+		(*path) = fmt.Sprintf("/deployments/%s/%s/predictions", owner, name)
+		body.Version = nil
+	}
+}
+
+func WithInput(input PredictionInput) CreatePredictionOption {
+	return func(path *string, body *createPredictionBody) {
+		body.Input = input
+	}
+}
+
+func WithWebhook(webhook *Webhook) CreatePredictionOption {
+	return func(path *string, body *createPredictionBody) {
+		if webhook != nil {
+			body.Webhook = &webhook.URL
+			if len(webhook.Events) > 0 {
+				body.WebhookEventsFilter = webhook.Events
+			}
 		}
 	}
+}
 
-	if stream {
-		data["stream"] = true
+func WithStream(stream bool) CreatePredictionOption {
+	return func(path *string, body *createPredictionBody) {
+		if stream {
+			body.Stream = &stream
+		}
+	}
+}
+
+func (r *Client) CreatePredictionWithOptions(ctx context.Context, opts ...CreatePredictionOption) (*Prediction, error) {
+	path := ""
+	body := createPredictionBody{}
+	for _, opt := range opts {
+		opt(&path, &body)
 	}
 
 	prediction := &Prediction{}
-	err := r.fetch(ctx, "POST", "/predictions", data, prediction)
+	err := r.fetch(ctx, "POST", path, body, prediction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prediction: %w", err)
 	}
 
 	return prediction, nil
+}
+
+// CreatePrediction sends a request to the Replicate API to create a prediction.
+func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
+	opts := []CreatePredictionOption{
+		WithVersion(version),
+		WithInput(input),
+		WithWebhook(webhook),
+		WithStream(stream),
+	}
+
+	return r.CreatePredictionWithOptions(ctx, opts...)
 }
 
 // ListPredictions returns a paginated list of predictions.

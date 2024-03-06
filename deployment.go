@@ -58,28 +58,12 @@ func (r *Client) GetDeployment(ctx context.Context, deployment_owner string, dep
 }
 
 // CreateDeploymentPrediction sends a request to the Replicate API to create a prediction using the specified deployment.
-func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deployment_owner string, deployment_name string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
-	data := map[string]interface{}{
-		"input": input,
+func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deploymentOwner string, deploymentName string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
+	opts := []CreatePredictionOption{
+		WithDeployment(deploymentOwner, deploymentName),
+		WithInput(input),
+		WithWebhook(webhook),
+		WithStream(stream),
 	}
-
-	if webhook != nil {
-		data["webhook"] = webhook.URL
-		if len(webhook.Events) > 0 {
-			data["webhook_events_filter"] = webhook.Events
-		}
-	}
-
-	if stream {
-		data["stream"] = true
-	}
-
-	prediction := &Prediction{}
-	path := fmt.Sprintf("/deployments/%s/%s/predictions", deployment_owner, deployment_name)
-	err := r.fetch(ctx, "POST", path, data, prediction)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create prediction: %w", err)
-	}
-
-	return prediction, nil
+	return r.CreatePredictionWithOptions(ctx, opts...)
 }

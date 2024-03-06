@@ -137,26 +137,11 @@ func (r *Client) GetModelVersion(ctx context.Context, modelOwner string, modelNa
 
 // CreatePredictionWithModel sends a request to the Replicate API to create a prediction for a model.
 func (r *Client) CreatePredictionWithModel(ctx context.Context, modelOwner string, modelName string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
-	data := map[string]interface{}{
-		"input": input,
+	opts := []CreatePredictionOption{
+		WithModel(modelOwner, modelName),
+		WithInput(input),
+		WithWebhook(webhook),
+		WithStream(stream),
 	}
-
-	if webhook != nil {
-		data["webhook"] = webhook.URL
-		if len(webhook.Events) > 0 {
-			data["webhook_events_filter"] = webhook.Events
-		}
-	}
-
-	if stream {
-		data["stream"] = true
-	}
-
-	prediction := &Prediction{}
-	err := r.fetch(ctx, "POST", fmt.Sprintf("/models/%s/%s/predictions", modelOwner, modelName), data, prediction)
-	if err != nil {
-		return nil, err
-	}
-
-	return prediction, nil
+	return r.CreatePredictionWithOptions(ctx, opts...)
 }
