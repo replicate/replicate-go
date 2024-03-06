@@ -613,6 +613,91 @@ func TestCreatePredictionWithModel(t *testing.T) {
 	assert.Equal(t, replicate.Starting, prediction.Status)
 }
 
+func TestCreatePredictionWithOptions(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/models/owner/model/predictions", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+
+		var requestBody map[string]interface{}
+		err = json.Unmarshal(body, &requestBody)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Since WithModel option is used, version should not be present
+		assert.Nil(t, requestBody["version"])
+		assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
+		assert.Equal(t, "https://example.com/webhook", requestBody["webhook"])
+		assert.Equal(t, []interface{}{"start", "completed"}, requestBody["webhook_events_filter"])
+		assert.Equal(t, true, requestBody["stream"])
+
+		response := replicate.Prediction{
+			ID:        "ufawqhfynnddngldkgtslldrkq",
+			Model:     "owner/model",
+			Status:    "starting",
+			Input:     map[string]interface{}{"text": "Alice"},
+			Output:    nil,
+			Error:     nil,
+			Logs:      nil,
+			Metrics:   nil,
+			CreatedAt: "2022-04-26T22:13:06.224088Z",
+			URLs: map[string]string{
+				"get":    "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq",
+				"cancel": "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel",
+				"stream": "https://streaming.api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq",
+			},
+		}
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	input := replicate.PredictionInput{"text": "Alice"}
+	webhook := &replicate.Webhook{
+		URL:    "https://example.com/webhook",
+		Events: []replicate.WebhookEventType{"start", "completed"},
+	}
+	opts := []replicate.CreatePredictionOption{
+		replicate.WithModel("owner", "model"),
+		replicate.WithInput(input),
+		replicate.WithWebhook(webhook),
+		replicate.WithStream(true),
+	}
+
+	prediction, err := client.CreatePredictionWithOptions(ctx, opts...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "ufawqhfynnddngldkgtslldrkq", prediction.ID)
+	assert.Equal(t, "owner/model", prediction.Model)
+	assert.Equal(t, replicate.Starting, prediction.Status)
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["get"])
+	assert.Equal(t, "https://api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq/cancel", prediction.URLs["cancel"])
+	assert.Equal(t, "https://streaming.api.replicate.com/v1/predictions/ufawqhfynnddngldkgtslldrkq", prediction.URLs["stream"])
+}
+
 func TestCancelPrediction(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
@@ -1014,6 +1099,67 @@ func TestCreateTraining(t *testing.T) {
 		Events: []replicate.WebhookEventType{"start", "completed"},
 	}
 	training, err := client.CreateTraining(ctx, "owner", "model", "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", destination, input, &webhook)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NoError(t, err)
+	assert.Equal(t, "zz4ibbonubfz7carwiefibzgga", training.ID)
+	assert.Equal(t, "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532", training.Version)
+	assert.Equal(t, replicate.Starting, training.Status)
+	assert.Equal(t, "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga", training.URLs["get"])
+	assert.Equal(t, "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga/cancel", training.URLs["cancel"])
+}
+
+func TestTrainingWithOptions(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/models/owner/model/versions/632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532/trainings", r.URL.Path)
+
+		training := &replicate.Training{
+			ID:        "zz4ibbonubfz7carwiefibzgga",
+			Model:     "replicate/hello-world",
+			Version:   "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532",
+			Status:    replicate.Starting,
+			CreatedAt: "2023-03-28T21:47:58.566434Z",
+			URLs: map[string]string{
+				"get":    "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga",
+				"cancel": "https://api.replicate.com/v1/trainings/zz4ibbonubfz7carwiefibzgga/cancel",
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		body, _ := json.Marshal(training)
+		w.Write(body)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	input := replicate.TrainingInput{"text": "Alice"}
+	destination := "owner/new-model"
+	webhook := replicate.Webhook{
+		URL:    "https://example.com/webhook",
+		Events: []replicate.WebhookEventType{"start", "completed"},
+	}
+
+	opts := []replicate.CreateTrainingOption{
+		replicate.WithModelVersion("owner", "model", "632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532"),
+		replicate.WithDestination(destination),
+		replicate.WithInput(input),
+		replicate.WithWebhook(&webhook),
+	}
+
+	training, err := client.CreateTrainingWithOptions(ctx, opts...)
 	if err != nil {
 		t.Fatal(err)
 	}

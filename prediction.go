@@ -97,76 +97,6 @@ func (p Prediction) Progress() *PredictionProgress {
 type PredictionInput map[string]interface{}
 type PredictionOutput interface{}
 
-type withModelSetter interface {
-	setModel(owner string, name string)
-}
-
-func WithModel[T withModelSetter](owner string, name string) func(T) {
-	return func(req T) {
-		req.setModel(owner, name)
-	}
-}
-
-type withModelVersionSetter interface {
-	setModelVersion(owner string, name string, version string)
-}
-
-func WithModelVersion[T withModelVersionSetter](owner string, name string, version string) func(T) {
-	return func(req T) {
-		req.setModelVersion(owner, name, version)
-	}
-}
-
-type withVersionSetter interface {
-	setVersion(version *string)
-}
-
-func WithVersion[T withVersionSetter](version string) func(T) {
-	return func(req T) {
-		req.setVersion(&version)
-	}
-}
-
-type withDeploymentSetter interface {
-	setDeployment(owner string, name string)
-}
-
-func WithDeployment[T withDeploymentSetter](owner string, name string) func(T) {
-	return func(req T) {
-		req.setDeployment(owner, name)
-	}
-}
-
-type withInputSetter interface {
-	setInput(input PredictionInput)
-}
-
-func WithInput[T withInputSetter](input PredictionInput) func(T) {
-	return func(req T) {
-		req.setInput(input)
-	}
-}
-
-type withWebhookSetter interface {
-	setWebhook(webhook *Webhook)
-}
-
-func WithWebhook[T withWebhookSetter](webhook *Webhook) func(T) {
-	return func(req T) {
-		req.setWebhook(webhook)
-	}
-}
-
-type withStreamSetter interface {
-	setStream(stream bool)
-}
-
-func WithStream[T withStreamSetter](stream bool) func(T) {
-	return func(req T) {
-		req.setStream(stream)
-	}
-}
-
 type createPredictionBody struct {
 	Version             *string            `json:"version,omitempty"`
 	Input               PredictionInput    `json:"input"`
@@ -174,64 +104,156 @@ type createPredictionBody struct {
 	WebhookEventsFilter []WebhookEventType `json:"webhook_events_filter,omitempty"`
 	Stream              *bool              `json:"stream,omitempty"`
 }
-type createPredictionRequest struct {
-	path string
-	body createPredictionBody
+
+type CreatePredictionOption interface {
+	applyToCreatePredictionPath(*string)
+	applyToCreatePredictionBody(*createPredictionBody)
 }
 
-var _ withModelSetter = &createPredictionRequest{}
-var _ withModelVersionSetter = &createPredictionRequest{}
-var _ withVersionSetter = &createPredictionRequest{}
-var _ withDeploymentSetter = &createPredictionRequest{}
-var _ withInputSetter = &createPredictionRequest{}
-var _ withWebhookSetter = &createPredictionRequest{}
-var _ withStreamSetter = &createPredictionRequest{}
+var _ CreatePredictionOption = withModelOption{}
+var _ CreatePredictionOption = withModelVersionOption{}
+var _ CreatePredictionOption = withVersionOption{}
+var _ CreatePredictionOption = withDeploymentOption{}
+var _ CreatePredictionOption = withInputOption{}
+var _ CreatePredictionOption = withWebhookOption{}
+var _ CreatePredictionOption = withStreamOption{}
 
-func (c *createPredictionRequest) setModel(owner string, name string) {
-	c.path = fmt.Sprintf("/models/%s/%s/predictions", owner, name)
-	c.body.Version = nil
+//
+
+type withModelOption struct {
+	owner string
+	name  string
 }
 
-func (c *createPredictionRequest) setModelVersion(owner string, name string, version string) {
-	c.path = fmt.Sprintf("/models/%s/%s/versions/%s/predictions", owner, name, version)
-	c.body.Version = nil
+func (o withModelOption) applyToCreatePredictionPath(path *string) {
+	(*path) = fmt.Sprintf("/models/%s/%s/predictions", o.owner, o.name)
 }
 
-func (c *createPredictionRequest) setVersion(version *string) {
-	c.path = "/predictions"
-	c.body.Version = version
+func (o withModelOption) applyToCreatePredictionBody(body *createPredictionBody) {
+	body.Version = nil
 }
 
-func (c *createPredictionRequest) setDeployment(owner string, name string) {
-	c.path = fmt.Sprintf("/deployments/%s/%s/predictions", owner, name)
-	c.body.Version = nil
+func WithModel(owner string, name string) CreatePredictionOption {
+	return withModelOption{owner: owner, name: name}
 }
 
-func (c *createPredictionRequest) setInput(input PredictionInput) {
-	c.body.Input = input
+//
+
+type withModelVersionOption struct {
+	owner   string
+	name    string
+	version string
 }
 
-func (c *createPredictionRequest) setWebhook(webhook *Webhook) {
-	c.body.Webhook = &webhook.URL
-	if len(webhook.Events) > 0 {
-		c.body.WebhookEventsFilter = webhook.Events
+func (o withModelVersionOption) applyToCreatePredictionPath(path *string) {
+	(*path) = fmt.Sprintf("/models/%s/%s/versions/%s/predictions", o.owner, o.name, o.version)
+}
+
+func (o withModelVersionOption) applyToCreatePredictionBody(body *createPredictionBody) {
+	body.Version = nil
+}
+
+func WithModelVersion(_owner string, _name string, version string) withModelVersionOption {
+	return withModelVersionOption{owner: _owner, name: _name, version: version}
+}
+
+//
+
+type withVersionOption struct {
+	version string
+}
+
+func (o withVersionOption) applyToCreatePredictionPath(path *string) {
+	(*path) = "/predictions"
+}
+
+func (o withVersionOption) applyToCreatePredictionBody(body *createPredictionBody) {
+	body.Version = &o.version
+}
+
+func WithVersion(version string) withVersionOption {
+	return withVersionOption{version: version}
+}
+
+//
+
+type withDeploymentOption struct {
+	owner string
+	name  string
+}
+
+func (o withDeploymentOption) applyToCreatePredictionPath(path *string) {
+	(*path) = fmt.Sprintf("/deployments/%s/%s/predictions", o.owner, o.name)
+}
+
+func (o withDeploymentOption) applyToCreatePredictionBody(body *createPredictionBody) {
+	body.Version = nil
+}
+
+func WithDeployment(owner string, name string) withDeploymentOption {
+	return withDeploymentOption{owner: owner, name: name}
+}
+
+//
+
+type withInputOption struct {
+	input map[string]interface{}
+}
+
+func (o withInputOption) applyToCreatePredictionPath(path *string) {}
+func (o withInputOption) applyToCreatePredictionBody(body *createPredictionBody) {
+	body.Input = o.input
+}
+
+func WithInput(input map[string]interface{}) withInputOption {
+	return withInputOption{input: input}
+}
+
+//
+
+type withWebhookOption struct {
+	webhook *Webhook
+}
+
+func (o withWebhookOption) applyToCreatePredictionPath(path *string) {}
+func (o withWebhookOption) applyToCreatePredictionBody(body *createPredictionBody) {
+	if o.webhook != nil {
+		body.Webhook = &o.webhook.URL
+		if len(o.webhook.Events) > 0 {
+			body.WebhookEventsFilter = o.webhook.Events
+		}
 	}
 }
 
-func (c *createPredictionRequest) setStream(stream bool) {
-	c.body.Stream = &stream
+func WithWebhook(webhook *Webhook) withWebhookOption {
+	return withWebhookOption{webhook: webhook}
 }
 
-type CreatePredictionOption func(*createPredictionRequest)
+type withStreamOption struct {
+	stream bool
+}
 
-func (r *Client) CreatePredictionWithOptions(ctx context.Context, opts ...func(*createPredictionRequest)) (*Prediction, error) {
-	req := &createPredictionRequest{}
+func (o withStreamOption) applyToCreatePredictionPath(path *string) {}
+func (o withStreamOption) applyToCreatePredictionBody(body *createPredictionBody) {
+	if o.stream {
+		body.Stream = &o.stream
+	}
+}
+
+func WithStream(stream bool) withStreamOption {
+	return withStreamOption{stream: stream}
+}
+
+func (r *Client) CreatePredictionWithOptions(ctx context.Context, opts ...CreatePredictionOption) (*Prediction, error) {
+	path := ""
+	body := &createPredictionBody{}
 	for _, opt := range opts {
-		opt(req)
+		opt.applyToCreatePredictionPath(&path)
+		opt.applyToCreatePredictionBody(body)
 	}
 
 	prediction := &Prediction{}
-	err := r.fetch(ctx, "POST", req.path, req.body, prediction)
+	err := r.fetch(ctx, "POST", path, body, prediction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prediction: %w", err)
 	}
