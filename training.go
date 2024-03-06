@@ -18,7 +18,9 @@ func (r *Client) CreateTraining(ctx context.Context, model_owner string, model_n
 
 	if webhook != nil {
 		data["webhook"] = webhook.URL
-		data["webhook_events_filter"] = webhook.Events
+		if len(webhook.Events) > 0 {
+			data["webhook_events_filter"] = webhook.Events
+		}
 	}
 
 	training := &Training{}

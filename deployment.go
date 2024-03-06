@@ -65,7 +65,9 @@ func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deployment_
 
 	if webhook != nil {
 		data["webhook"] = webhook.URL
-		data["webhook_events_filter"] = webhook.Events
+		if len(webhook.Events) > 0 {
+			data["webhook_events_filter"] = webhook.Events
+		}
 	}
 
 	if stream {

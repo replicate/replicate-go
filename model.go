@@ -143,7 +143,9 @@ func (r *Client) CreatePredictionWithModel(ctx context.Context, modelOwner strin
 
 	if webhook != nil {
 		data["webhook"] = webhook.URL
-		data["webhook_events_filter"] = webhook.Events
+		if len(webhook.Events) > 0 {
+			data["webhook_events_filter"] = webhook.Events
+		}
 	}
 
 	if stream {
