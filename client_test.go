@@ -484,8 +484,12 @@ func TestCreatePredictionWithDeployment(t *testing.T) {
 		assert.Nil(t, requestBody["version"])
 		assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
 		assert.Equal(t, "https://example.com/webhook", requestBody["webhook"])
-		assert.Equal(t, []interface{}{"start", "completed"}, requestBody["webhook_events_filter"])
-		assert.Equal(t, true, requestBody["stream"])
+		if _, exists := requestBody["webhook_events_filter"]; exists {
+			assert.Fail(t, "webhook_events_filter should not be present")
+		}
+		if _, exists := requestBody["stream"]; exists {
+			assert.Fail(t, "stream should not be present")
+		}
 
 		response := replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
@@ -526,10 +530,9 @@ func TestCreatePredictionWithDeployment(t *testing.T) {
 
 	input := replicate.PredictionInput{"text": "Alice"}
 	webhook := replicate.Webhook{
-		URL:    "https://example.com/webhook",
-		Events: []replicate.WebhookEventType{"start", "completed"},
+		URL: "https://example.com/webhook",
 	}
-	prediction, err := client.CreatePredictionWithDeployment(ctx, "owner", "name", input, &webhook, true)
+	prediction, err := client.CreatePredictionWithDeployment(ctx, "owner", "name", input, &webhook, false)
 	if err != nil {
 		t.Fatal(err)
 	}
