@@ -18,10 +18,10 @@ type Account struct {
 func (a Account) MarshalJSON() ([]byte, error) {
 	if a.rawJSON != nil {
 		return a.rawJSON, nil
-	} else {
-		type Alias Account
-		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&a)})
 	}
+
+	type Alias Account
+	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&a)})
 }
 
 func (a *Account) UnmarshalJSON(data []byte) error {

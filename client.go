@@ -165,7 +165,7 @@ func (r *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	return request, nil
 }
 
-func (r *Client) do(ctx context.Context, request *http.Request, out interface{}) error {
+func (r *Client) do(request *http.Request, out interface{}) error {
 	maxRetries := r.options.retryPolicy.maxRetries
 	backoff := r.options.retryPolicy.backoff
 
@@ -194,7 +194,7 @@ func (r *Client) do(ctx context.Context, request *http.Request, out interface{})
 			retryAfter := response.Header.Get("Retry-After")
 			if retryAfter != "" {
 				if parsedDelay, parseErr := time.Parse(time.RFC1123, retryAfter); parseErr == nil {
-					delay = parsedDelay.Sub(time.Now())
+					delay = time.Until(parsedDelay)
 				} else if seconds, convErr := strconv.Atoi(retryAfter); convErr == nil {
 					delay = time.Duration(seconds) * time.Second
 				}
@@ -243,7 +243,7 @@ func (r *Client) fetch(ctx context.Context, method, path string, body interface{
 		return err
 	}
 
-	return r.do(ctx, request, out)
+	return r.do(request, out)
 }
 
 // shouldRetry returns true if the request should be retried.
@@ -258,14 +258,12 @@ func (r *Client) shouldRetry(response *http.Response, method string) bool {
 	return response.StatusCode == 429
 }
 
-func constructURL(baseUrl, route string) string {
-	if strings.HasPrefix(route, "/") {
-		route = route[1:]
+func constructURL(baseURL, route string) string {
+	route = strings.TrimPrefix(route, "/")
+
+	if !strings.HasSuffix(baseURL, "/") {
+		baseURL += "/"
 	}
 
-	if !strings.HasSuffix(baseUrl, "/") {
-		baseUrl += "/"
-	}
-
-	return baseUrl + route
+	return baseURL + route
 }

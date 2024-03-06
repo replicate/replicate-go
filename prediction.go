@@ -41,10 +41,9 @@ type Prediction struct {
 func (p Prediction) MarshalJSON() ([]byte, error) {
 	if p.rawJSON != nil {
 		return p.rawJSON, nil
-	} else {
-		type Alias Prediction
-		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
 	}
+	type Alias Prediction
+	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
 }
 
 func (p *Prediction) UnmarshalJSON(data []byte) error {

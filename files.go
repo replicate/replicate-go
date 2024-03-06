@@ -134,7 +134,7 @@ func (r *Client) createFile(ctx context.Context, reader io.Reader, options Creat
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	file := &File{}
-	err = r.do(ctx, req, file)
+	err = r.do(req, file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create file: %w", err)
 	}

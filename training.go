@@ -9,7 +9,7 @@ type Training Prediction
 type TrainingInput PredictionInput
 
 // CreateTraining sends a request to the Replicate API to create a new training.
-func (r *Client) CreateTraining(ctx context.Context, model_owner string, model_name string, version string, destination string, input TrainingInput, webhook *Webhook) (*Training, error) {
+func (r *Client) CreateTraining(ctx context.Context, modelOwner string, modelName string, version string, destination string, input TrainingInput, webhook *Webhook) (*Training, error) {
 	data := map[string]interface{}{
 		"version":     version,
 		"destination": destination,
@@ -24,7 +24,7 @@ func (r *Client) CreateTraining(ctx context.Context, model_owner string, model_n
 	}
 
 	training := &Training{}
-	path := fmt.Sprintf("/models/%s/%s/versions/%s/trainings", model_owner, model_name, version)
+	path := fmt.Sprintf("/models/%s/%s/versions/%s/trainings", modelOwner, modelName, version)
 	err := r.fetch(ctx, "POST", path, data, training)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create training: %w", err)

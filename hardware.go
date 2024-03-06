@@ -16,10 +16,9 @@ type Hardware struct {
 func (h Hardware) MarshalJSON() ([]byte, error) {
 	if h.rawJSON != nil {
 		return h.rawJSON, nil
-	} else {
-		type Alias Hardware
-		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&h)})
 	}
+	type Alias Hardware
+	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&h)})
 }
 
 func (h *Hardware) UnmarshalJSON(data []byte) error {

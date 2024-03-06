@@ -32,10 +32,9 @@ type DeploymentConfiguration struct {
 func (d Deployment) MarshalJSON() ([]byte, error) {
 	if d.rawJSON != nil {
 		return d.rawJSON, nil
-	} else {
-		type Alias Deployment
-		return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&d)})
 	}
+	type Alias Deployment
+	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&d)})
 }
 
 func (d *Deployment) UnmarshalJSON(data []byte) error {
@@ -46,9 +45,9 @@ func (d *Deployment) UnmarshalJSON(data []byte) error {
 }
 
 // GetDeployment retrieves the details of a specific deployment.
-func (r *Client) GetDeployment(ctx context.Context, deployment_owner string, deployment_name string) (*Deployment, error) {
+func (r *Client) GetDeployment(ctx context.Context, deploymentOwner string, deploymentName string) (*Deployment, error) {
 	deployment := &Deployment{}
-	path := fmt.Sprintf("/deployments/%s/%s", deployment_owner, deployment_name)
+	path := fmt.Sprintf("/deployments/%s/%s", deploymentOwner, deploymentName)
 	err := r.fetch(ctx, "GET", path, nil, deployment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment: %w", err)
@@ -58,7 +57,7 @@ func (r *Client) GetDeployment(ctx context.Context, deployment_owner string, dep
 }
 
 // CreateDeploymentPrediction sends a request to the Replicate API to create a prediction using the specified deployment.
-func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deployment_owner string, deployment_name string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
+func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deploymentOwner string, deploymentName string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
 	data := map[string]interface{}{
 		"input": input,
 	}
@@ -75,7 +74,7 @@ func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deployment_
 	}
 
 	prediction := &Prediction{}
-	path := fmt.Sprintf("/deployments/%s/%s/predictions", deployment_owner, deployment_name)
+	path := fmt.Sprintf("/deployments/%s/%s/predictions", deploymentOwner, deploymentName)
 	err := r.fetch(ctx, "POST", path, data, prediction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prediction: %w", err)
