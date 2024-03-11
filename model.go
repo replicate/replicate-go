@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 type Model struct {
@@ -131,6 +132,15 @@ func (r *Client) GetModelVersion(ctx context.Context, modelOwner string, modelNa
 		return nil, fmt.Errorf("failed to get model version: %w", err)
 	}
 	return version, nil
+}
+
+// DeleteModelVersion deletes a model version and all associated predictions, including all output files.
+func (r *Client) DeleteModelVersion(ctx context.Context, modelOwner string, modelName string, versionID string) error {
+	err := r.fetch(ctx, http.MethodDelete, fmt.Sprintf("/models/%s/%s/versions/%s", modelOwner, modelName, versionID), nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete model version: %w", err)
+	}
+	return nil
 }
 
 // CreatePredictionWithModel sends a request to the Replicate API to create a prediction for a model.
