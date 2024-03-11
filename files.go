@@ -127,7 +127,7 @@ func (r *Client) createFile(ctx context.Context, reader io.Reader, options Creat
 		return nil, fmt.Errorf("failed to close writer: %w", err)
 	}
 
-	req, err := r.newRequest(ctx, "POST", "/files", body)
+	req, err := r.newRequest(ctx, http.MethodPost, "/files", body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -145,7 +145,7 @@ func (r *Client) createFile(ctx context.Context, reader io.Reader, options Creat
 // ListFiles lists your files.
 func (r *Client) ListFiles(ctx context.Context) (*Page[File], error) {
 	response := &Page[File]{}
-	err := r.fetch(ctx, "GET", "/files", nil, response)
+	err := r.fetch(ctx, http.MethodGet, "/files", nil, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files: %w", err)
 	}
@@ -156,7 +156,7 @@ func (r *Client) ListFiles(ctx context.Context) (*Page[File], error) {
 // GetFile retrieves information about a file.
 func (r *Client) GetFile(ctx context.Context, fileID string) (*File, error) {
 	file := &File{}
-	err := r.fetch(ctx, "GET", fmt.Sprintf("/files/%s", fileID), nil, file)
+	err := r.fetch(ctx, http.MethodGet, fmt.Sprintf("/files/%s", fileID), nil, file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file: %w", err)
 	}
@@ -166,7 +166,7 @@ func (r *Client) GetFile(ctx context.Context, fileID string) (*File, error) {
 
 // DeleteFile deletes a file.
 func (r *Client) DeleteFile(ctx context.Context, fileID string) error {
-	err := r.fetch(ctx, "DELETE", fmt.Sprintf("/files/%s", fileID), nil, nil)
+	err := r.fetch(ctx, http.MethodDelete, fmt.Sprintf("/files/%s", fileID), nil, nil)
 	if err != nil {
 		return fmt.Errorf("failed to delete file: %w", err)
 	}
