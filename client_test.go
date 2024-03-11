@@ -863,6 +863,23 @@ func TestWait(t *testing.T) {
 
 		if statuses[i] == replicate.Succeeded {
 			prediction.Output = map[string]interface{}{"text": "Hello, Alice"}
+
+			startedAt := "2022-04-26T22:13:06.324088Z"
+			prediction.StartedAt = &startedAt
+
+			completedAt := "2022-04-26T22:13:07.224088Z"
+			prediction.CompletedAt = &completedAt
+
+			predictTime := 0.5
+			totalTime := 1.0
+			inputTokenCount := 1
+			outputTokenCount := 2
+			prediction.Metrics = &replicate.PredictionMetrics{
+				PredictTime:      &predictTime,
+				TotalTime:        &totalTime,
+				InputTokenCount:  &inputTokenCount,
+				OutputTokenCount: &outputTokenCount,
+			}
 		}
 
 		if i < len(statuses)-1 {
@@ -901,6 +918,12 @@ func TestWait(t *testing.T) {
 	assert.Equal(t, replicate.Succeeded, prediction.Status)
 	assert.Equal(t, replicate.PredictionInput{"text": "Alice"}, prediction.Input)
 	assert.Equal(t, map[string]interface{}{"text": "Hello, Alice"}, prediction.Output)
+	assert.Equal(t, "2022-04-26T22:13:06.324088Z", *prediction.StartedAt)
+	assert.Equal(t, "2022-04-26T22:13:07.224088Z", *prediction.CompletedAt)
+	assert.Equal(t, 0.5, *prediction.Metrics.PredictTime)
+	assert.Equal(t, 1.0, *prediction.Metrics.TotalTime)
+	assert.Equal(t, 1, *prediction.Metrics.InputTokenCount)
+	assert.Equal(t, 2, *prediction.Metrics.OutputTokenCount)
 }
 
 func TestWaitAsync(t *testing.T) {
