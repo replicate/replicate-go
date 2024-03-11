@@ -3,6 +3,7 @@ package replicate
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 )
 
 // Page represents a paginated response from Replicate's API.
@@ -43,7 +44,7 @@ func Paginate[T any](ctx context.Context, client *Client, initialPage *Page[T]) 
 
 		for nextURL != nil {
 			page := &Page[T]{}
-			err := client.fetch(ctx, "GET", *nextURL, nil, page)
+			err := client.fetch(ctx, http.MethodGet, *nextURL, nil, page)
 			if err != nil {
 				errChan <- err
 				return

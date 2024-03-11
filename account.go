@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 type Account struct {
@@ -34,7 +35,7 @@ func (a *Account) UnmarshalJSON(data []byte) error {
 // GetCurrentAccount returns the authenticated user or organization.
 func (r *Client) GetCurrentAccount(ctx context.Context) (*Account, error) {
 	response := &Account{}
-	err := r.fetch(ctx, "GET", "/account", nil, response)
+	err := r.fetch(ctx, http.MethodGet, "/account", nil, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list collections: %w", err)
 	}

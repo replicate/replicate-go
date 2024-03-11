@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 type Deployment struct {
@@ -48,7 +49,7 @@ func (d *Deployment) UnmarshalJSON(data []byte) error {
 func (r *Client) GetDeployment(ctx context.Context, deploymentOwner string, deploymentName string) (*Deployment, error) {
 	deployment := &Deployment{}
 	path := fmt.Sprintf("/deployments/%s/%s", deploymentOwner, deploymentName)
-	err := r.fetch(ctx, "GET", path, nil, deployment)
+	err := r.fetch(ctx, http.MethodGet, path, nil, deployment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment: %w", err)
 	}
@@ -75,7 +76,7 @@ func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deploymentO
 
 	prediction := &Prediction{}
 	path := fmt.Sprintf("/deployments/%s/%s/predictions", deploymentOwner, deploymentName)
-	err := r.fetch(ctx, "POST", path, data, prediction)
+	err := r.fetch(ctx, http.MethodPost, path, data, prediction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prediction: %w", err)
 	}

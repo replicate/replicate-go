@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 )
@@ -122,7 +123,7 @@ func (r *Client) CreatePrediction(ctx context.Context, version string, input Pre
 	}
 
 	prediction := &Prediction{}
-	err := r.fetch(ctx, "POST", "/predictions", data, prediction)
+	err := r.fetch(ctx, http.MethodPost, "/predictions", data, prediction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prediction: %w", err)
 	}
@@ -133,7 +134,7 @@ func (r *Client) CreatePrediction(ctx context.Context, version string, input Pre
 // ListPredictions returns a paginated list of predictions.
 func (r *Client) ListPredictions(ctx context.Context) (*Page[Prediction], error) {
 	response := &Page[Prediction]{}
-	err := r.fetch(ctx, "GET", "/predictions", nil, response)
+	err := r.fetch(ctx, http.MethodGet, "/predictions", nil, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list predictions: %w", err)
 	}
@@ -143,7 +144,7 @@ func (r *Client) ListPredictions(ctx context.Context) (*Page[Prediction], error)
 // GetPrediction retrieves a prediction from the Replicate API by its ID.
 func (r *Client) GetPrediction(ctx context.Context, id string) (*Prediction, error) {
 	prediction := &Prediction{}
-	err := r.fetch(ctx, "GET", fmt.Sprintf("/predictions/%s", id), nil, prediction)
+	err := r.fetch(ctx, http.MethodGet, fmt.Sprintf("/predictions/%s", id), nil, prediction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get prediction: %w", err)
 	}
@@ -153,7 +154,7 @@ func (r *Client) GetPrediction(ctx context.Context, id string) (*Prediction, err
 // CancelPrediction cancels a running prediction by its ID.
 func (r *Client) CancelPrediction(ctx context.Context, id string) (*Prediction, error) {
 	prediction := &Prediction{}
-	err := r.fetch(ctx, "POST", fmt.Sprintf("/predictions/%s/cancel", id), nil, prediction)
+	err := r.fetch(ctx, http.MethodPost, fmt.Sprintf("/predictions/%s/cancel", id), nil, prediction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to cancel prediction: %w", err)
 	}

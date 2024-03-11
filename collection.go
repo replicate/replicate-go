@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 type Collection struct {
@@ -33,7 +34,7 @@ func (c *Collection) UnmarshalJSON(data []byte) error {
 // ListCollections returns a list of all collections.
 func (r *Client) ListCollections(ctx context.Context) (*Page[Collection], error) {
 	response := &Page[Collection]{}
-	err := r.fetch(ctx, "GET", "/collections", nil, response)
+	err := r.fetch(ctx, http.MethodGet, "/collections", nil, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list collections: %w", err)
 	}
@@ -43,7 +44,7 @@ func (r *Client) ListCollections(ctx context.Context) (*Page[Collection], error)
 // GetCollection returns a collection by slug.
 func (r *Client) GetCollection(ctx context.Context, slug string) (*Collection, error) {
 	collection := &Collection{}
-	err := r.fetch(ctx, "GET", fmt.Sprintf("/collections/%s", slug), nil, collection)
+	err := r.fetch(ctx, http.MethodGet, fmt.Sprintf("/collections/%s", slug), nil, collection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get collection: %w", err)
 	}

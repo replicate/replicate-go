@@ -124,7 +124,7 @@ func TestListCollections(t *testing.T) {
 
 func TestGetCollection(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/collections/super-resolution", r.URL.Path)
 
 		collection := &replicate.Collection{
@@ -248,7 +248,7 @@ func TestGetModel(t *testing.T) {
 
 func TestCreateModel(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/models", r.URL.Path)
 
 		body, err := io.ReadAll(r.Body)
@@ -413,7 +413,7 @@ func TestGetModelVersion(t *testing.T) {
 
 func TestCreatePrediction(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/predictions", r.URL.Path)
 
 		body, err := io.ReadAll(r.Body)
@@ -492,7 +492,7 @@ func TestCreatePrediction(t *testing.T) {
 
 func TestCreatePredictionWithDeployment(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/deployments/owner/name/predictions", r.URL.Path)
 
 		body, err := io.ReadAll(r.Body)
@@ -573,7 +573,7 @@ func TestCreatePredictionWithDeployment(t *testing.T) {
 
 func TestCreatePredictionWithModel(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/models/owner/model/predictions", r.URL.Path)
 
 		body, err := io.ReadAll(r.Body)
@@ -641,7 +641,7 @@ func TestCreatePredictionWithModel(t *testing.T) {
 
 func TestCancelPrediction(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/predictions/ufawqhfynnddngldkgtslldrkq/cancel", r.URL.Path)
 
 		response := replicate.Prediction{
@@ -826,7 +826,7 @@ func TestListPredictions(t *testing.T) {
 
 func TestGetPrediction(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/predictions/ufawqhfynnddngldkgtslldrkq", r.URL.Path)
 
 		prediction := &replicate.Prediction{
@@ -875,7 +875,7 @@ func TestWait(t *testing.T) {
 
 	i := 0
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/predictions/ufawqhfynnddngldkgtslldrkq", r.URL.Path)
 
 		prediction := &replicate.Prediction{
@@ -957,7 +957,7 @@ func TestWaitAsync(t *testing.T) {
 
 	i := 0
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/predictions/ufawqhfynnddngldkgtslldrkq", r.URL.Path)
 
 		prediction := &replicate.Prediction{
@@ -1024,7 +1024,7 @@ func TestWaitAsync(t *testing.T) {
 
 func TestCreateTraining(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/models/owner/model/versions/632231d0d49d34d5c4633bd838aee3d81d936e59a886fbf28524702003b4c532/trainings", r.URL.Path)
 
 		training := &replicate.Training{
@@ -1077,7 +1077,7 @@ func TestCreateTraining(t *testing.T) {
 
 func TestGetTraining(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/trainings/zz4ibbonubfz7carwiefibzgga", r.URL.Path)
 
 		training := &replicate.Training{
@@ -1114,7 +1114,7 @@ func TestGetTraining(t *testing.T) {
 
 func TestCancelTraining(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/trainings/zz4ibbonubfz7carwiefibzgga/cancel", r.URL.Path)
 
 		training := &replicate.Training{
@@ -1151,7 +1151,7 @@ func TestCancelTraining(t *testing.T) {
 
 func TestListTrainings(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/trainings", r.URL.Path)
 
 		response := &replicate.Page[replicate.Training]{
@@ -1338,7 +1338,7 @@ func TestStream(t *testing.T) {
 	mockServer := httptest.NewUnstartedServer(nil)
 	mockServer.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == "POST" && r.URL.Path == "/predictions":
+		case r.Method == http.MethodPost && r.URL.Path == "/predictions":
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Fatal(err)
@@ -1373,7 +1373,7 @@ func TestStream(t *testing.T) {
 
 			w.WriteHeader(http.StatusCreated)
 			w.Write(responseBytes)
-		case r.Method == "GET" && r.URL.Path == "/predictions/ufawqhfynnddngldkgtslldrkq/stream":
+		case r.Method == http.MethodGet && r.URL.Path == "/predictions/ufawqhfynnddngldkgtslldrkq/stream":
 			flusher, _ := w.(http.Flusher)
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.Header().Set("Cache-Control", "no-cache")
