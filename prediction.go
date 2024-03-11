@@ -16,23 +16,16 @@ const (
 )
 
 type Prediction struct {
-	ID      string           `json:"id"`
-	Status  Status           `json:"status"`
-	Model   string           `json:"model"`
-	Version string           `json:"version"`
-	Input   PredictionInput  `json:"input"`
-	Output  PredictionOutput `json:"output,omitempty"`
-	Source  Source           `json:"source"`
-	Error   interface{}      `json:"error,omitempty"`
-	Logs    *string          `json:"logs,omitempty"`
-	Metrics *struct {
-		PredictTime      *float64 `json:"predict_time,omitempty"`
-		TotalTime        *float64 `json:"total_time,omitempty"`
-		InputTokenCount  *int     `json:"input_token_count,omitempty"`
-		OutputTokenCount *int     `json:"output_token_count,omitempty"`
-		TimeToFirstToken *float64 `json:"time_to_first_token,omitempty"`
-		TokensPerSecond  *float64 `json:"tokens_per_second,omitempty"`
-	} `json:"metrics,omitempty"`
+	ID                  string             `json:"id"`
+	Status              Status             `json:"status"`
+	Model               string             `json:"model"`
+	Version             string             `json:"version"`
+	Input               PredictionInput    `json:"input"`
+	Output              PredictionOutput   `json:"output,omitempty"`
+	Source              Source             `json:"source"`
+	Error               interface{}        `json:"error,omitempty"`
+	Logs                *string            `json:"logs,omitempty"`
+	Metrics             *PredictionMetrics `json:"metrics,omitempty"`
 	Webhook             *string            `json:"webhook,omitempty"`
 	WebhookEventsFilter []WebhookEventType `json:"webhook_events_filter,omitempty"`
 	URLs                map[string]string  `json:"urls,omitempty"`
@@ -56,6 +49,18 @@ func (p *Prediction) UnmarshalJSON(data []byte) error {
 	type Alias Prediction
 	alias := &struct{ *Alias }{Alias: (*Alias)(p)}
 	return json.Unmarshal(data, alias)
+}
+
+type PredictionInput map[string]interface{}
+type PredictionOutput interface{}
+
+type PredictionMetrics struct {
+	PredictTime      *float64 `json:"predict_time,omitempty"`
+	TotalTime        *float64 `json:"total_time,omitempty"`
+	InputTokenCount  *int     `json:"input_token_count,omitempty"`
+	OutputTokenCount *int     `json:"output_token_count,omitempty"`
+	TimeToFirstToken *float64 `json:"time_to_first_token,omitempty"`
+	TokensPerSecond  *float64 `json:"tokens_per_second,omitempty"`
 }
 
 type PredictionProgress struct {
@@ -97,9 +102,6 @@ func (p Prediction) Progress() *PredictionProgress {
 
 	return nil
 }
-
-type PredictionInput map[string]interface{}
-type PredictionOutput interface{}
 
 // CreatePrediction sends a request to the Replicate API to create a prediction.
 func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
