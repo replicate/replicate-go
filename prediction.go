@@ -26,7 +26,12 @@ type Prediction struct {
 	Error   interface{}      `json:"error,omitempty"`
 	Logs    *string          `json:"logs,omitempty"`
 	Metrics *struct {
-		PredictTime *float64 `json:"predict_time,omitempty"`
+		PredictTime      *float64 `json:"predict_time,omitempty"`
+		TotalTime        *float64 `json:"total_time,omitempty"`
+		InputTokenCount  *int     `json:"input_token_count,omitempty"`
+		OutputTokenCount *int     `json:"output_token_count,omitempty"`
+		TimeToFirstToken *float64 `json:"time_to_first_token,omitempty"`
+		TokensPerSecond  *float64 `json:"tokens_per_second,omitempty"`
 	} `json:"metrics,omitempty"`
 	Webhook             *string            `json:"webhook,omitempty"`
 	WebhookEventsFilter []WebhookEventType `json:"webhook_events_filter,omitempty"`
