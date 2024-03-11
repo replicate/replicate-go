@@ -43,18 +43,6 @@ func (d *Deployment) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, alias)
 }
 
-// GetDeployment retrieves the details of a specific deployment.
-func (r *Client) GetDeployment(ctx context.Context, deploymentOwner string, deploymentName string) (*Deployment, error) {
-	deployment := &Deployment{}
-	path := fmt.Sprintf("/deployments/%s/%s", deploymentOwner, deploymentName)
-	err := r.fetch(ctx, http.MethodGet, path, nil, deployment)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get deployment: %w", err)
-	}
-
-	return deployment, nil
-}
-
 // CreateDeploymentPrediction sends a request to the Replicate API to create a prediction using the specified deployment.
 func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deploymentOwner string, deploymentName string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
 	data := map[string]interface{}{
@@ -80,4 +68,27 @@ func (r *Client) CreatePredictionWithDeployment(ctx context.Context, deploymentO
 	}
 
 	return prediction, nil
+}
+
+// GetDeployment retrieves the details of a specific deployment.
+func (r *Client) GetDeployment(ctx context.Context, deploymentOwner string, deploymentName string) (*Deployment, error) {
+	deployment := &Deployment{}
+	path := fmt.Sprintf("/deployments/%s/%s", deploymentOwner, deploymentName)
+	err := r.fetch(ctx, http.MethodGet, path, nil, deployment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployment: %w", err)
+	}
+
+	return deployment, nil
+}
+
+// ListDeployments retrieves a list of deployments associated with the current account.
+func (r *Client) ListDeployments(ctx context.Context) (*Page[Deployment], error) {
+	response := &Page[Deployment]{}
+	path := "/v1/deployments"
+	err := r.fetch(ctx, http.MethodGet, path, nil, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list deployments: %w", err)
+	}
+	return response, nil
 }

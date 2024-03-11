@@ -1811,3 +1811,110 @@ func TestGetDeployment(t *testing.T) {
 	assert.Equal(t, 1, deployment.CurrentRelease.Configuration.MinInstances)
 	assert.Equal(t, 5, deployment.CurrentRelease.Configuration.MaxInstances)
 }
+
+func TestListDeployments(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/v1/deployments", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		deployments := &replicate.Page[replicate.Deployment]{
+			Results: []replicate.Deployment{
+				{
+					Owner: "acme",
+					Name:  "image-upscaler",
+					CurrentRelease: replicate.DeploymentRelease{
+						Number:    1,
+						Model:     "acme/esrgan",
+						Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+						CreatedAt: "2022-01-01T00:00:00Z",
+						CreatedBy: replicate.Account{
+							Type:     "organization",
+							Username: "acme",
+							Name:     "Acme, Inc.",
+						},
+						Configuration: replicate.DeploymentConfiguration{
+							Hardware:     "gpu-t4",
+							MinInstances: 1,
+							MaxInstances: 5,
+						},
+					},
+				},
+				{
+					Owner: "acme",
+					Name:  "text-generator",
+					CurrentRelease: replicate.DeploymentRelease{
+						Number:    2,
+						Model:     "acme/acme-llama",
+						Version:   "4b7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccbb",
+						CreatedAt: "2022-02-02T00:00:00Z",
+						CreatedBy: replicate.Account{
+							Type:     "organization",
+							Username: "acme",
+							Name:     "Acme, Inc.",
+						},
+						Configuration: replicate.DeploymentConfiguration{
+							Hardware:     "cpu",
+							MinInstances: 2,
+							MaxInstances: 10,
+						},
+					},
+				},
+			},
+		}
+
+		responseBytes, err := json.Marshal(deployments)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	deployments, err := client.ListDeployments(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotNil(t, deployments)
+	assert.Len(t, deployments.Results, 2)
+
+	// Asserting the first deployment
+	assert.Equal(t, "acme", deployments.Results[0].Owner)
+	assert.Equal(t, "image-upscaler", deployments.Results[0].Name)
+	assert.Equal(t, 1, deployments.Results[0].CurrentRelease.Number)
+	assert.Equal(t, "acme/esrgan", deployments.Results[0].CurrentRelease.Model)
+	assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", deployments.Results[0].CurrentRelease.Version)
+	assert.Equal(t, "2022-01-01T00:00:00Z", deployments.Results[0].CurrentRelease.CreatedAt)
+	assert.Equal(t, "organization", deployments.Results[0].CurrentRelease.CreatedBy.Type)
+	assert.Equal(t, "acme", deployments.Results[0].CurrentRelease.CreatedBy.Username)
+	assert.Equal(t, "Acme, Inc.", deployments.Results[0].CurrentRelease.CreatedBy.Name)
+	assert.Equal(t, "gpu-t4", deployments.Results[0].CurrentRelease.Configuration.Hardware)
+	assert.Equal(t, 1, deployments.Results[0].CurrentRelease.Configuration.MinInstances)
+	assert.Equal(t, 5, deployments.Results[0].CurrentRelease.Configuration.MaxInstances)
+
+	// Asserting the second deployment
+	assert.Equal(t, "acme", deployments.Results[1].Owner)
+	assert.Equal(t, "text-generator", deployments.Results[1].Name)
+	assert.Equal(t, 2, deployments.Results[1].CurrentRelease.Number)
+	assert.Equal(t, "acme/acme-llama", deployments.Results[1].CurrentRelease.Model)
+	assert.Equal(t, "4b7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccbb", deployments.Results[1].CurrentRelease.Version)
+	assert.Equal(t, "2022-02-02T00:00:00Z", deployments.Results[1].CurrentRelease.CreatedAt)
+	assert.Equal(t, "organization", deployments.Results[1].CurrentRelease.CreatedBy.Type)
+	assert.Equal(t, "acme", deployments.Results[1].CurrentRelease.CreatedBy.Username)
+	assert.Equal(t, "Acme, Inc.", deployments.Results[0].CurrentRelease.CreatedBy.Name)
+	assert.Equal(t, "cpu", deployments.Results[1].CurrentRelease.Configuration.Hardware)
+	assert.Equal(t, 2, deployments.Results[1].CurrentRelease.Configuration.MinInstances)
+	assert.Equal(t, 10, deployments.Results[1].CurrentRelease.Configuration.MaxInstances)
+}
