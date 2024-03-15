@@ -25,6 +25,17 @@ type File struct {
 	CreatedAt   string            `json:"created_at"`
 	ExpiresAt   string            `json:"expires_at"`
 	URLs        map[string]string `json:"urls"`
+
+	rawJSON json.RawMessage `json:"-"`
+}
+
+var _ json.Unmarshaler = (*File)(nil)
+
+func (f *File) UnmarshalJSON(data []byte) error {
+	f.rawJSON = data
+	type Alias File
+	alias := &struct{ *Alias }{Alias: (*Alias)(f)}
+	return json.Unmarshal(data, alias)
 }
 
 type CreateFileOptions struct {
