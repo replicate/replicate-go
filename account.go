@@ -25,6 +25,8 @@ func (a Account) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&a)})
 }
 
+var _ json.Unmarshaler = (*Account)(nil)
+
 func (a *Account) UnmarshalJSON(data []byte) error {
 	a.rawJSON = data
 	type Alias Account

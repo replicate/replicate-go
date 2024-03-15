@@ -45,6 +45,8 @@ func (p Prediction) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
 }
 
+var _ json.Unmarshaler = (*Prediction)(nil)
+
 func (p *Prediction) UnmarshalJSON(data []byte) error {
 	p.rawJSON = data
 	type Alias Prediction

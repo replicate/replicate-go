@@ -22,6 +22,8 @@ func (h Hardware) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&h)})
 }
 
+var _ json.Unmarshaler = (*Hardware)(nil)
+
 func (h *Hardware) UnmarshalJSON(data []byte) error {
 	h.rawJSON = data
 	type Alias Hardware

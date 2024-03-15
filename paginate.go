@@ -23,6 +23,8 @@ func (p Page[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
 }
 
+var _ json.Unmarshaler = (*Page[Prediction])(nil)
+
 func (p *Page[T]) UnmarshalJSON(data []byte) error {
 	p.rawJSON = data
 	type Alias Page[T]

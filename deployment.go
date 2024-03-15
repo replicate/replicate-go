@@ -38,6 +38,8 @@ func (d Deployment) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&d)})
 }
 
+var _ json.Unmarshaler = (*Deployment)(nil)
+
 func (d *Deployment) UnmarshalJSON(data []byte) error {
 	d.rawJSON = data
 	type Alias Deployment
