@@ -38,6 +38,10 @@ func (f *File) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, alias)
 }
 
+func (f *File) RawJSON() json.RawMessage {
+	return f.rawJSON
+}
+
 type CreateFileOptions struct {
 	Filename    string            `json:"filename"`
 	ContentType string            `json:"content_type"`

@@ -43,6 +43,10 @@ type WebhookSigningSecret struct {
 	rawJSON json.RawMessage
 }
 
+func (wss *WebhookSigningSecret) RawJSON() json.RawMessage {
+	return wss.rawJSON
+}
+
 var _ json.Unmarshaler = (*WebhookSigningSecret)(nil)
 
 func (wss *WebhookSigningSecret) UnmarshalJSON(data []byte) error {

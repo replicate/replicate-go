@@ -16,13 +16,8 @@ type Account struct {
 	rawJSON json.RawMessage `json:"-"`
 }
 
-func (a Account) MarshalJSON() ([]byte, error) {
-	if a.rawJSON != nil {
-		return a.rawJSON, nil
-	}
-
-	type Alias Account
-	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&a)})
+func (a *Account) RawJSON() json.RawMessage {
+	return a.rawJSON
 }
 
 var _ json.Unmarshaler = (*Account)(nil)
