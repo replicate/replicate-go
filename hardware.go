@@ -14,13 +14,11 @@ type Hardware struct {
 	rawJSON json.RawMessage `json:"-"`
 }
 
-func (h Hardware) MarshalJSON() ([]byte, error) {
-	if h.rawJSON != nil {
-		return h.rawJSON, nil
-	}
-	type Alias Hardware
-	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&h)})
+func (h *Hardware) RawJSON() json.RawMessage {
+	return h.rawJSON
 }
+
+var _ json.Unmarshaler = (*Hardware)(nil)
 
 func (h *Hardware) UnmarshalJSON(data []byte) error {
 	h.rawJSON = data

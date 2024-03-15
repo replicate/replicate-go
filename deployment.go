@@ -30,13 +30,11 @@ type DeploymentConfiguration struct {
 	MaxInstances int    `json:"max_instances"`
 }
 
-func (d Deployment) MarshalJSON() ([]byte, error) {
-	if d.rawJSON != nil {
-		return d.rawJSON, nil
-	}
-	type Alias Deployment
-	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&d)})
+func (d *Deployment) RawJSON() json.RawMessage {
+	return d.rawJSON
 }
+
+var _ json.Unmarshaler = (*Deployment)(nil)
 
 func (d *Deployment) UnmarshalJSON(data []byte) error {
 	d.rawJSON = data

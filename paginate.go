@@ -15,13 +15,11 @@ type Page[T any] struct {
 	rawJSON json.RawMessage `json:"-"`
 }
 
-func (p Page[T]) MarshalJSON() ([]byte, error) {
-	if p.rawJSON != nil {
-		return p.rawJSON, nil
-	}
-	type Alias Page[T]
-	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
+func (p *Page[T]) RawJSON() json.RawMessage {
+	return p.rawJSON
 }
+
+var _ json.Unmarshaler = (*Page[Prediction])(nil)
 
 func (p *Page[T]) UnmarshalJSON(data []byte) error {
 	p.rawJSON = data

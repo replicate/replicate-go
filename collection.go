@@ -16,13 +16,11 @@ type Collection struct {
 	rawJSON json.RawMessage `json:"-"`
 }
 
-func (c Collection) MarshalJSON() ([]byte, error) {
-	if c.rawJSON != nil {
-		return c.rawJSON, nil
-	}
-	type Alias Collection
-	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&c)})
+func (c *Collection) RawJSON() json.RawMessage {
+	return c.rawJSON
 }
+
+var _ json.Unmarshaler = (*Collection)(nil)
 
 func (c *Collection) UnmarshalJSON(data []byte) error {
 	c.rawJSON = data

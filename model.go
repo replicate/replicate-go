@@ -24,13 +24,11 @@ type Model struct {
 	rawJSON json.RawMessage `json:"-"`
 }
 
-func (m Model) MarshalJSON() ([]byte, error) {
-	if m.rawJSON != nil {
-		return m.rawJSON, nil
-	}
-	type Alias Model
-	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&m)})
+func (m *Model) RawJSON() json.RawMessage {
+	return m.rawJSON
 }
+
+var _ json.Unmarshaler = (*Model)(nil)
 
 func (m *Model) UnmarshalJSON(data []byte) error {
 	m.rawJSON = data
@@ -58,13 +56,11 @@ type ModelVersion struct {
 	rawJSON json.RawMessage `json:"-"`
 }
 
-func (m ModelVersion) MarshalJSON() ([]byte, error) {
-	if m.rawJSON != nil {
-		return m.rawJSON, nil
-	}
-	type Alias ModelVersion
-	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&m)})
+func (m *ModelVersion) RawJSON() json.RawMessage {
+	return m.rawJSON
 }
+
+var _ json.Unmarshaler = (*ModelVersion)(nil)
 
 func (m *ModelVersion) UnmarshalJSON(data []byte) error {
 	m.rawJSON = data

@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,6 +39,21 @@ func (w WebhookEventType) String() string {
 
 type WebhookSigningSecret struct {
 	Key string `json:"key"`
+
+	rawJSON json.RawMessage
+}
+
+func (wss *WebhookSigningSecret) RawJSON() json.RawMessage {
+	return wss.rawJSON
+}
+
+var _ json.Unmarshaler = (*WebhookSigningSecret)(nil)
+
+func (wss *WebhookSigningSecret) UnmarshalJSON(data []byte) error {
+	wss.rawJSON = data
+	type Alias WebhookSigningSecret
+	alias := &struct{ *Alias }{Alias: (*Alias)(wss)}
+	return json.Unmarshal(data, alias)
 }
 
 // GetDefaultWebhookSecret gets the default webhook signing secret

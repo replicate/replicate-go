@@ -37,13 +37,11 @@ type Prediction struct {
 	rawJSON json.RawMessage `json:"-"`
 }
 
-func (p Prediction) MarshalJSON() ([]byte, error) {
-	if p.rawJSON != nil {
-		return p.rawJSON, nil
-	}
-	type Alias Prediction
-	return json.Marshal(&struct{ *Alias }{Alias: (*Alias)(&p)})
+func (p *Prediction) RawJSON() json.RawMessage {
+	return p.rawJSON
 }
+
+var _ json.Unmarshaler = (*Prediction)(nil)
 
 func (p *Prediction) UnmarshalJSON(data []byte) error {
 	p.rawJSON = data
