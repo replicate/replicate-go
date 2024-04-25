@@ -157,7 +157,7 @@ func (r *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	}
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", fmt.Sprintf("Token %s", r.options.auth))
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.options.auth))
 	if r.options.userAgent != nil {
 		request.Header.Set("User-Agent", *r.options.userAgent)
 	}
