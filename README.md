@@ -94,6 +94,22 @@ if err != nil {
 fmt.Println("output: ", prediction.Output)
 ```
 
+### Webhooks
+
+To prevent unauthorized requests, Replicate signs every webhook and its metadata with a unique key for each user or organization. You can use this signature to verify the webhook indeed comes from Replicate before you process it.
+
+This client includes a `ValidateWebhookRequest` convenience function that you can use to validate webhooks:
+
+```go
+import (
+	"github.com/replicate/replicate-go"
+)
+
+isValid, err := replicate.ValidateWebhookRequest(req, secret)
+```
+
+To learn more, see the [webhooks guide](https://replicate.com/docs/webhooks).
+
 ## License
 
 Replicate's Go client is released under the Apache 2.0 license.
