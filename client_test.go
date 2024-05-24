@@ -1744,6 +1744,11 @@ func TestValidateWebhook(t *testing.T) {
 	isValid, err := replicate.ValidateWebhookRequest(req, testSecret)
 	require.NoError(t, err)
 	assert.True(t, isValid)
+
+	// Ensure that the request body is available after validation
+	bodyBytes, err := io.ReadAll(req.Body)
+	require.NoError(t, err)
+	assert.Equal(t, body, string(bodyBytes))
 }
 
 func TestGetDeployment(t *testing.T) {

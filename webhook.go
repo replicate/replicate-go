@@ -1,6 +1,7 @@
 package replicate
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -80,6 +81,9 @@ func ValidateWebhookRequest(req *http.Request, secret WebhookSigningSecret) (boo
 	if err != nil {
 		return false, fmt.Errorf("failed to read request body: %w", err)
 	}
+	defer req.Body.Close()
+
+	req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	body := string(bodyBytes)
 
 	signedContent := fmt.Sprintf("%s.%s.%s", id, timestamp, body)
