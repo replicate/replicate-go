@@ -27,6 +27,8 @@ import "github.com/replicate/replicate-go"
 
 ## Usage
 
+### Create a client
+
 ```go
 import (
 	"context"
@@ -35,7 +37,7 @@ import (
 	"github.com/replicate/replicate-go"
 )
 
-ctx := context.Background()
+ctx := context.TODO()
 
 // You can also provide a token directly with 
 // `replicate.NewClient(replicate.WithToken("r8_..."))`
@@ -43,7 +45,11 @@ r8, err := replicate.NewClient(replicate.WithTokenFromEnv())
 if err != nil {
 	// handle error
 }
+```
 
+### Run a model
+
+```go
 model := "stability-ai/sdxl"
 version := "7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc"
 
@@ -58,15 +64,16 @@ webhook := replicate.Webhook{
 
 // Run a model and wait for its output
 output, _ := r8.Run(ctx, fmt.Sprintf("%s:%s", model, version), input, &webhook)
-fmt.Println(output)
+```
 
-// The `Run` method is a convenience method that
-// creates a prediction, waits for it to finish, and returns the output.
-// If you want a reference to the prediction, you can call `CreatePrediction`,
-// call `Wait` on the prediction, and access its `Output` field.
+The `Run` method is a convenience method that
+creates a prediction, waits for it to finish, and returns the output.
+If you want a reference to the prediction, you can call `CreatePrediction`,
+call `Wait` on the prediction, and access its `Output` field.
+
+```go
 prediction, _ := r8.CreatePrediction(ctx, version, input, &webhook, false)
 _ = r8.Wait(ctx, prediction) // Wait for the prediction to finish
-fmt.Println(prediction.Output)
 ```
 
 ### Webhooks

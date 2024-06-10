@@ -10,7 +10,6 @@ import (
 func ExampleClient_Run() {
 	ctx := context.TODO()
 
-	// You can also provide a token directly with `replicate.NewClient(replicate.WithToken("r8_..."))`
 	r8, err := replicate.NewClient(replicate.WithTokenFromEnv())
 	if err != nil {
 		panic(err)
@@ -23,24 +22,18 @@ func ExampleClient_Run() {
 		"prompt": "An astronaut riding a rainbow unicorn",
 	}
 
-	webhook := replicate.Webhook{
-		URL:    "https://example.com/webhook",
-		Events: []replicate.WebhookEventType{"start", "completed"},
-	}
-
-	// Run a model and wait for its output
-	output, err := r8.Run(ctx, fmt.Sprintf("%s:%s", model, version), input, &webhook)
+	output, err := r8.Run(ctx, fmt.Sprintf("%s:%s", model, version), input, nil)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Printf("Generated %d image(s)\n", len(output.([]any)))
 	// Output: Generated 1 image(s)
 }
 
 func ExampleClient_CreatePrediction() {
-	ctx := context.Background()
+	ctx := context.TODO()
 
-	// You can also provide a token directly with `replicate.NewClient(replicate.WithToken("r8_..."))`
 	r8, err := replicate.NewClient(replicate.WithTokenFromEnv())
 	if err != nil {
 		panic(err)
@@ -53,25 +46,16 @@ func ExampleClient_CreatePrediction() {
 		"prompt": "An astronaut riding a rainbow unicorn",
 	}
 
-	webhook := replicate.Webhook{
-		URL:    "https://example.com/webhook",
-		Events: []replicate.WebhookEventType{"start", "completed"},
-	}
-
-	// The `Run` method is a convenience method that
-	// creates a prediction, waits for it to finish, and returns the output.
-	// If you want a reference to the prediction, you can call `CreatePrediction`,
-	// call `Wait` on the prediction, and access its `Output` field.
-	prediction, err := r8.CreatePrediction(ctx, version, input, &webhook, false)
+	prediction, err := r8.CreatePrediction(ctx, version, input, nil, false)
 	if err != nil {
 		panic(err)
 	}
 
-	// Wait for the prediction to finish
 	err = r8.Wait(ctx, prediction)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Println(prediction.Status)
 	// Output: succeeded
 }
