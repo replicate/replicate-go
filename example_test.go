@@ -8,19 +8,19 @@ import (
 )
 
 func ExampleClient_Run() {
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	// You can also provide a token directly with `replicate.NewClient(replicate.WithToken("r8_..."))`
 	r8, err := replicate.NewClient(replicate.WithTokenFromEnv())
 	if err != nil {
-		return
+		panic(err)
 	}
 
-	// https://replicate.com/stability-ai/stable-diffusion
-	version := "ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4"
+	model := "bytedance/sdxl-lightning-4step"
+	version := "5f24084160c9089501c1b3545d9be3c27883ae2239b6f412990e82d4a6210f8f"
 
 	input := replicate.PredictionInput{
-		"prompt": "an astronaut riding a horse on mars, hd, dramatic lighting",
+		"prompt": "An astronaut riding a rainbow unicorn",
 	}
 
 	webhook := replicate.Webhook{
@@ -29,11 +29,12 @@ func ExampleClient_Run() {
 	}
 
 	// Run a model and wait for its output
-	output, err := r8.Run(ctx, version, input, &webhook)
+	output, err := r8.Run(ctx, fmt.Sprintf("%s:%s", model, version), input, &webhook)
 	if err != nil {
-		return
+		panic(err)
 	}
-	fmt.Println("output: ", output)
+	fmt.Printf("Generated %d image(s)\n", len(output.([]any)))
+	// Output: Generated 1 image(s)
 }
 
 func ExampleClient_CreatePrediction() {
@@ -42,14 +43,14 @@ func ExampleClient_CreatePrediction() {
 	// You can also provide a token directly with `replicate.NewClient(replicate.WithToken("r8_..."))`
 	r8, err := replicate.NewClient(replicate.WithTokenFromEnv())
 	if err != nil {
-		return
+		panic(err)
 	}
 
-	// https://replicate.com/stability-ai/stable-diffusion
-	version := "ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4"
+	// https://replicate.com/bytedance/sdxl-lightning-4step
+	version := "5f24084160c9089501c1b3545d9be3c27883ae2239b6f412990e82d4a6210f8f"
 
 	input := replicate.PredictionInput{
-		"prompt": "an astronaut riding a horse on mars, hd, dramatic lighting",
+		"prompt": "An astronaut riding a rainbow unicorn",
 	}
 
 	webhook := replicate.Webhook{
@@ -63,13 +64,14 @@ func ExampleClient_CreatePrediction() {
 	// call `Wait` on the prediction, and access its `Output` field.
 	prediction, err := r8.CreatePrediction(ctx, version, input, &webhook, false)
 	if err != nil {
-		return
+		panic(err)
 	}
 
 	// Wait for the prediction to finish
 	err = r8.Wait(ctx, prediction)
 	if err != nil {
-		return
+		panic(err)
 	}
-	fmt.Println("output: ", prediction.Output)
+	fmt.Println(prediction.Status)
+	// Output: succeeded
 }
