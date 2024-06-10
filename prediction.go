@@ -104,6 +104,13 @@ func (p Prediction) Progress() *PredictionProgress {
 
 // CreatePrediction sends a request to the Replicate API to create a prediction.
 func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
+	// Convert File objects in input to their "get" URL value
+	for key, value := range input {
+		if file, ok := value.(*File); ok {
+			input[key] = file.URLs["get"]
+		}
+	}
+
 	data := map[string]interface{}{
 		"version": version,
 		"input":   input,
