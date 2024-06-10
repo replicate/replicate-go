@@ -76,6 +76,22 @@ prediction, _ := r8.CreatePrediction(ctx, version, input, &webhook, false)
 _ = r8.Wait(ctx, prediction) // Wait for the prediction to finish
 ```
 
+Some models take file inputs.
+Use the `CreateFileFromPath`, `CreateFileFromBytes`, or `CreateFileFromBuffer` method
+to upload a file and pass it as a prediction input.
+
+```go
+// https://replicate.com/vaibhavs10/incredibly-fast-whisper
+version := "3ab86df6c8f54c11309d4d1f930ac292bad43ace52d10c80d87eb258b3c9f79c"
+
+file, _ := r8.CreateFileFromPath(ctx, "path/to/audio.mp3", nil)
+
+input := replicate.PredictionInput{
+	"audio": file,
+}
+prediction, _ := r8.CreatePrediction(ctx, version, input, nil, false)
+```
+
 ### Webhooks
 
 To prevent unauthorized requests, Replicate signs every webhook and its metadata with a unique key for each user or organization. You can use this signature to verify the webhook indeed comes from Replicate before you process it.
