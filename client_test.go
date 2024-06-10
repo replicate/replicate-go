@@ -1765,11 +1765,9 @@ func TestGetDeployment(t *testing.T) {
 					Name:     "Acme, Inc.",
 				},
 				Configuration: replicate.DeploymentConfiguration{
-					Hardware: "gpu-t4",
-					Scaling: replicate.DeploymentScalingConfiguration{
-						MinInstances: 1,
-						MaxInstances: 5,
-					},
+					Hardware:     "gpu-t4",
+					MinInstances: 1,
+					MaxInstances: 5,
 				},
 			},
 		}
@@ -1810,8 +1808,8 @@ func TestGetDeployment(t *testing.T) {
 	assert.Equal(t, "acme", deployment.CurrentRelease.CreatedBy.Username)
 	assert.Equal(t, "Acme, Inc.", deployment.CurrentRelease.CreatedBy.Name)
 	assert.Equal(t, "gpu-t4", deployment.CurrentRelease.Configuration.Hardware)
-	assert.Equal(t, 1, deployment.CurrentRelease.Configuration.Scaling.MinInstances)
-	assert.Equal(t, 5, deployment.CurrentRelease.Configuration.Scaling.MaxInstances)
+	assert.Equal(t, 1, deployment.CurrentRelease.Configuration.MinInstances)
+	assert.Equal(t, 5, deployment.CurrentRelease.Configuration.MaxInstances)
 }
 
 func TestListDeployments(t *testing.T) {
@@ -1835,11 +1833,9 @@ func TestListDeployments(t *testing.T) {
 							Name:     "Acme, Inc.",
 						},
 						Configuration: replicate.DeploymentConfiguration{
-							Hardware: "gpu-t4",
-							Scaling: replicate.DeploymentScalingConfiguration{
-								MinInstances: 1,
-								MaxInstances: 5,
-							},
+							Hardware:     "gpu-t4",
+							MinInstances: 1,
+							MaxInstances: 5,
 						},
 					},
 				},
@@ -1857,11 +1853,9 @@ func TestListDeployments(t *testing.T) {
 							Name:     "Acme, Inc.",
 						},
 						Configuration: replicate.DeploymentConfiguration{
-							Hardware: "cpu",
-							Scaling: replicate.DeploymentScalingConfiguration{
-								MinInstances: 2,
-								MaxInstances: 10,
-							},
+							Hardware:     "cpu",
+							MinInstances: 2,
+							MaxInstances: 10,
 						},
 					},
 				},
@@ -1907,8 +1901,8 @@ func TestListDeployments(t *testing.T) {
 	assert.Equal(t, "acme", deployments.Results[0].CurrentRelease.CreatedBy.Username)
 	assert.Equal(t, "Acme, Inc.", deployments.Results[0].CurrentRelease.CreatedBy.Name)
 	assert.Equal(t, "gpu-t4", deployments.Results[0].CurrentRelease.Configuration.Hardware)
-	assert.Equal(t, 1, deployments.Results[0].CurrentRelease.Configuration.Scaling.MinInstances)
-	assert.Equal(t, 5, deployments.Results[0].CurrentRelease.Configuration.Scaling.MaxInstances)
+	assert.Equal(t, 1, deployments.Results[0].CurrentRelease.Configuration.MinInstances)
+	assert.Equal(t, 5, deployments.Results[0].CurrentRelease.Configuration.MaxInstances)
 
 	// Asserting the second deployment
 	assert.Equal(t, "acme", deployments.Results[1].Owner)
@@ -1921,8 +1915,8 @@ func TestListDeployments(t *testing.T) {
 	assert.Equal(t, "acme", deployments.Results[1].CurrentRelease.CreatedBy.Username)
 	assert.Equal(t, "Acme, Inc.", deployments.Results[0].CurrentRelease.CreatedBy.Name)
 	assert.Equal(t, "cpu", deployments.Results[1].CurrentRelease.Configuration.Hardware)
-	assert.Equal(t, 2, deployments.Results[1].CurrentRelease.Configuration.Scaling.MinInstances)
-	assert.Equal(t, 10, deployments.Results[1].CurrentRelease.Configuration.Scaling.MaxInstances)
+	assert.Equal(t, 2, deployments.Results[1].CurrentRelease.Configuration.MinInstances)
+	assert.Equal(t, 10, deployments.Results[1].CurrentRelease.Configuration.MaxInstances)
 }
 
 func TestCreateDeployment(t *testing.T) {
@@ -1958,11 +1952,9 @@ func TestCreateDeployment(t *testing.T) {
 					Model:   "acme/new-model",
 					Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 					Configuration: replicate.DeploymentConfiguration{
-						Hardware: "gpu-t4",
-						Scaling: replicate.DeploymentScalingConfiguration{
-							MinInstances: 1,
-							MaxInstances: 5,
-						},
+						Hardware:     "gpu-t4",
+						MinInstances: 1,
+						MaxInstances: 5,
 					},
 					CreatedBy: owner,
 					CreatedAt: timestamp,
@@ -2003,11 +1995,9 @@ func TestCreateDeployment(t *testing.T) {
 				Model:   options.Model,
 				Version: options.Version,
 				Configuration: replicate.DeploymentConfiguration{
-					Hardware: options.Hardware,
-					Scaling: replicate.DeploymentScalingConfiguration{
-						MinInstances: options.MinInstances,
-						MaxInstances: options.MaxInstances,
-					},
+					Hardware:     options.Hardware,
+					MinInstances: options.MinInstances,
+					MaxInstances: options.MaxInstances,
 				},
 				CreatedBy: owner,
 				CreatedAt: timestamp,
@@ -2045,8 +2035,8 @@ func TestCreateDeployment(t *testing.T) {
 				assert.Equal(t, tc.want.CurrentRelease.Model, deployment.CurrentRelease.Model)
 				assert.Equal(t, tc.want.CurrentRelease.Version, deployment.CurrentRelease.Version)
 				assert.Equal(t, tc.want.CurrentRelease.Configuration.Hardware, deployment.CurrentRelease.Configuration.Hardware)
-				assert.Equal(t, tc.want.CurrentRelease.Configuration.Scaling.MinInstances, deployment.CurrentRelease.Configuration.Scaling.MinInstances)
-				assert.Equal(t, tc.want.CurrentRelease.Configuration.Scaling.MaxInstances, deployment.CurrentRelease.Configuration.Scaling.MaxInstances)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.MinInstances, deployment.CurrentRelease.Configuration.MinInstances)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.MaxInstances, deployment.CurrentRelease.Configuration.MaxInstances)
 				assert.Equal(t, tc.want.CurrentRelease.CreatedBy.Name, deployment.CurrentRelease.CreatedBy.Name)
 				assert.Equal(t, tc.want.CurrentRelease.CreatedAt, deployment.CurrentRelease.CreatedAt)
 			}
@@ -2071,11 +2061,9 @@ func TestUpdateDeployment(t *testing.T) {
 			Model:   "acme/original-model",
 			Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 			Configuration: replicate.DeploymentConfiguration{
-				Hardware: "gpu-t4",
-				Scaling: replicate.DeploymentScalingConfiguration{
-					MinInstances: 1,
-					MaxInstances: 5,
-				},
+				Hardware:     "gpu-t4",
+				MinInstances: 1,
+				MaxInstances: 5,
 			},
 			CreatedBy: owner,
 			CreatedAt: timestamp,
@@ -2109,11 +2097,9 @@ func TestUpdateDeployment(t *testing.T) {
 					Model:   "acme/updated-model",
 					Version: "b21cbe271e65c1718f2999b038c18b45e21e4fba961181fbfae9342fc53b9e05",
 					Configuration: replicate.DeploymentConfiguration{
-						Hardware: "cpu",
-						Scaling: replicate.DeploymentScalingConfiguration{
-							MinInstances: 2,
-							MaxInstances: 10,
-						},
+						Hardware:     "cpu",
+						MinInstances: 2,
+						MaxInstances: 10,
 					},
 					CreatedBy: owner,
 					CreatedAt: timestamp,
@@ -2136,11 +2122,9 @@ func TestUpdateDeployment(t *testing.T) {
 					Model:   "acme/original-model",
 					Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
 					Configuration: replicate.DeploymentConfiguration{
-						Hardware: "gpu-t4",
-						Scaling: replicate.DeploymentScalingConfiguration{
-							MinInstances: 3,
-							MaxInstances: 5,
-						},
+						Hardware:     "gpu-t4",
+						MinInstances: 3,
+						MaxInstances: 5,
 					},
 					CreatedBy: owner,
 					CreatedAt: timestamp,
@@ -2164,11 +2148,9 @@ func TestUpdateDeployment(t *testing.T) {
 					Model:   "acme/model-updated-only",
 					Version: "b21cbe271e65c1718f2999b038c18b45e21e4fba961181fbfae9342fc53b9e05",
 					Configuration: replicate.DeploymentConfiguration{
-						Hardware: "gpu-t4",
-						Scaling: replicate.DeploymentScalingConfiguration{
-							MinInstances: 1,
-							MaxInstances: 5,
-						},
+						Hardware:     "gpu-t4",
+						MinInstances: 1,
+						MaxInstances: 5,
 					},
 					CreatedBy: owner,
 					CreatedAt: timestamp,
@@ -2223,10 +2205,10 @@ func TestUpdateDeployment(t *testing.T) {
 			updatedDeployment.CurrentRelease.Configuration.Hardware = *options.Hardware
 		}
 		if options.MinInstances != nil {
-			updatedDeployment.CurrentRelease.Configuration.Scaling.MinInstances = *options.MinInstances
+			updatedDeployment.CurrentRelease.Configuration.MinInstances = *options.MinInstances
 		}
 		if options.MaxInstances != nil {
-			updatedDeployment.CurrentRelease.Configuration.Scaling.MaxInstances = *options.MaxInstances
+			updatedDeployment.CurrentRelease.Configuration.MaxInstances = *options.MaxInstances
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -2258,8 +2240,8 @@ func TestUpdateDeployment(t *testing.T) {
 				assert.Equal(t, tc.want.CurrentRelease.Model, deployment.CurrentRelease.Model)
 				assert.Equal(t, tc.want.CurrentRelease.Version, deployment.CurrentRelease.Version)
 				assert.Equal(t, tc.want.CurrentRelease.Configuration.Hardware, deployment.CurrentRelease.Configuration.Hardware)
-				assert.Equal(t, tc.want.CurrentRelease.Configuration.Scaling.MinInstances, deployment.CurrentRelease.Configuration.Scaling.MinInstances)
-				assert.Equal(t, tc.want.CurrentRelease.Configuration.Scaling.MaxInstances, deployment.CurrentRelease.Configuration.Scaling.MaxInstances)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.MinInstances, deployment.CurrentRelease.Configuration.MinInstances)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.MaxInstances, deployment.CurrentRelease.Configuration.MaxInstances)
 				assert.Equal(t, tc.want.CurrentRelease.CreatedBy.Name, deployment.CurrentRelease.CreatedBy.Name)
 				assert.Equal(t, tc.want.CurrentRelease.CreatedAt, deployment.CurrentRelease.CreatedAt)
 			}

@@ -25,13 +25,9 @@ type DeploymentRelease struct {
 }
 
 type DeploymentConfiguration struct {
-	Hardware string                         `json:"hardware"`
-	Scaling  DeploymentScalingConfiguration `json:"scaling"`
-}
-
-type DeploymentScalingConfiguration struct {
-	MinInstances int `json:"min_instances"`
-	MaxInstances int `json:"max_instances"`
+	Hardware     string `json:"hardware"`
+	MinInstances int    `json:"min_instances"`
+	MaxInstances int    `json:"max_instances"`
 }
 
 func (d *Deployment) RawJSON() json.RawMessage {
