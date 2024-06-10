@@ -19,6 +19,8 @@ jobs:
 
       - name: Test
         run: make test
+        env:
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
 
       - name: Lint
         run: make lint
