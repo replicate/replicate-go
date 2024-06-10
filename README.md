@@ -44,11 +44,11 @@ if err != nil {
 	// handle error
 }
 
-// https://replicate.com/stability-ai/stable-diffusion
-version := "ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4"
+model := "stability-ai/sdxl"
+version := "7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc"
 
 input := replicate.PredictionInput{
-	"prompt": "an astronaut riding a horse on mars, hd, dramatic lighting",
+	"prompt": "An astronaut riding a rainbow unicorn",
 }
 
 webhook := replicate.Webhook{
@@ -57,41 +57,16 @@ webhook := replicate.Webhook{
 }
 
 // Run a model and wait for its output
-output, err := r8.Run(ctx, version, input, &webhook)
-if err != nil {
-	// handle error
-}
-fmt.Println("output: ", output)
-
-// Create a prediction
-prediction, err := r8.CreatePrediction(ctx, version, input, &webhook, false)
-if err != nil {
-	// handle error
-}
-
-// Wait for the prediction to finish
-err = r8.Wait(ctx, prediction)
-if err != nil {
-	// handle error
-}
-fmt.Println("output: ", output)
-
+output, _ := r8.Run(ctx, fmt.Sprintf("%s:%s", model, version), input, &webhook)
+fmt.Println(output)
 
 // The `Run` method is a convenience method that
 // creates a prediction, waits for it to finish, and returns the output.
 // If you want a reference to the prediction, you can call `CreatePrediction`,
 // call `Wait` on the prediction, and access its `Output` field.
-prediction, err := r8.CreatePrediction(ctx, version, input, &webhook, false)
-if err != nil {
-	// handle error
-}
-
-// Wait for the prediction to finish
-err = r8.Wait(ctx, prediction)
-if err != nil {
-	// handle error
-}
-fmt.Println("output: ", prediction.Output)
+prediction, _ := r8.CreatePrediction(ctx, version, input, &webhook, false)
+_ = r8.Wait(ctx, prediction) // Wait for the prediction to finish
+fmt.Println(prediction.Output)
 ```
 
 ### Webhooks
