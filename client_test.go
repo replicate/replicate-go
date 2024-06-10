@@ -1816,3 +1816,449 @@ func TestGetDeployment(t *testing.T) {
 	assert.Equal(t, 1, deployment.CurrentRelease.Configuration.MinInstances)
 	assert.Equal(t, 5, deployment.CurrentRelease.Configuration.MaxInstances)
 }
+
+func TestListDeployments(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/deployments", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+
+		deployments := &replicate.Page[replicate.Deployment]{
+			Results: []replicate.Deployment{
+				{
+					Owner: "acme",
+					Name:  "image-upscaler",
+					CurrentRelease: replicate.DeploymentRelease{
+						Number:    1,
+						Model:     "acme/esrgan",
+						Version:   "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+						CreatedAt: "2022-01-01T00:00:00Z",
+						CreatedBy: replicate.Account{
+							Type:     "organization",
+							Username: "acme",
+							Name:     "Acme, Inc.",
+						},
+						Configuration: replicate.DeploymentConfiguration{
+							Hardware:     "gpu-t4",
+							MinInstances: 1,
+							MaxInstances: 5,
+						},
+					},
+				},
+				{
+					Owner: "acme",
+					Name:  "text-generator",
+					CurrentRelease: replicate.DeploymentRelease{
+						Number:    2,
+						Model:     "acme/acme-llama",
+						Version:   "4b7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccbb",
+						CreatedAt: "2022-02-02T00:00:00Z",
+						CreatedBy: replicate.Account{
+							Type:     "organization",
+							Username: "acme",
+							Name:     "Acme, Inc.",
+						},
+						Configuration: replicate.DeploymentConfiguration{
+							Hardware:     "cpu",
+							MinInstances: 2,
+							MaxInstances: 10,
+						},
+					},
+				},
+			},
+		}
+
+		responseBytes, err := json.Marshal(deployments)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBytes)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	deployments, err := client.ListDeployments(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotNil(t, deployments)
+	assert.Len(t, deployments.Results, 2)
+
+	// Asserting the first deployment
+	assert.Equal(t, "acme", deployments.Results[0].Owner)
+	assert.Equal(t, "image-upscaler", deployments.Results[0].Name)
+	assert.Equal(t, 1, deployments.Results[0].CurrentRelease.Number)
+	assert.Equal(t, "acme/esrgan", deployments.Results[0].CurrentRelease.Model)
+	assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", deployments.Results[0].CurrentRelease.Version)
+	assert.Equal(t, "2022-01-01T00:00:00Z", deployments.Results[0].CurrentRelease.CreatedAt)
+	assert.Equal(t, "organization", deployments.Results[0].CurrentRelease.CreatedBy.Type)
+	assert.Equal(t, "acme", deployments.Results[0].CurrentRelease.CreatedBy.Username)
+	assert.Equal(t, "Acme, Inc.", deployments.Results[0].CurrentRelease.CreatedBy.Name)
+	assert.Equal(t, "gpu-t4", deployments.Results[0].CurrentRelease.Configuration.Hardware)
+	assert.Equal(t, 1, deployments.Results[0].CurrentRelease.Configuration.MinInstances)
+	assert.Equal(t, 5, deployments.Results[0].CurrentRelease.Configuration.MaxInstances)
+
+	// Asserting the second deployment
+	assert.Equal(t, "acme", deployments.Results[1].Owner)
+	assert.Equal(t, "text-generator", deployments.Results[1].Name)
+	assert.Equal(t, 2, deployments.Results[1].CurrentRelease.Number)
+	assert.Equal(t, "acme/acme-llama", deployments.Results[1].CurrentRelease.Model)
+	assert.Equal(t, "4b7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccbb", deployments.Results[1].CurrentRelease.Version)
+	assert.Equal(t, "2022-02-02T00:00:00Z", deployments.Results[1].CurrentRelease.CreatedAt)
+	assert.Equal(t, "organization", deployments.Results[1].CurrentRelease.CreatedBy.Type)
+	assert.Equal(t, "acme", deployments.Results[1].CurrentRelease.CreatedBy.Username)
+	assert.Equal(t, "Acme, Inc.", deployments.Results[0].CurrentRelease.CreatedBy.Name)
+	assert.Equal(t, "cpu", deployments.Results[1].CurrentRelease.Configuration.Hardware)
+	assert.Equal(t, 2, deployments.Results[1].CurrentRelease.Configuration.MinInstances)
+	assert.Equal(t, 10, deployments.Results[1].CurrentRelease.Configuration.MaxInstances)
+}
+
+func TestCreateDeployment(t *testing.T) {
+	owner := replicate.Account{
+		Type:     "organization",
+		Username: "acme",
+		Name:     "Acme, Inc.",
+	}
+
+	timestamp := time.Now().Format(time.RFC3339)
+
+	testCases := []struct {
+		name      string
+		options   replicate.CreateDeploymentOptions
+		want      *replicate.Deployment
+		wantError bool
+	}{
+		{
+			name: "Successful Creation",
+			options: replicate.CreateDeploymentOptions{
+				Name:         "new-deployment",
+				Model:        "acme/new-model",
+				Version:      "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				Hardware:     "gpu-t4",
+				MinInstances: 1,
+				MaxInstances: 5,
+			},
+			want: &replicate.Deployment{
+				Owner: owner.Username,
+				Name:  "new-deployment",
+				CurrentRelease: replicate.DeploymentRelease{
+					Number:  1,
+					Model:   "acme/new-model",
+					Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+					Configuration: replicate.DeploymentConfiguration{
+						Hardware:     "gpu-t4",
+						MinInstances: 1,
+						MaxInstances: 5,
+					},
+					CreatedBy: owner,
+					CreatedAt: timestamp,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "Failed Creation",
+			options: replicate.CreateDeploymentOptions{
+				Name: "invalid-deployment",
+			},
+			want:      nil,
+			wantError: true,
+		},
+	}
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/deployments", r.URL.Path)
+
+		var options replicate.CreateDeploymentOptions
+		if err := json.NewDecoder(r.Body).Decode(&options); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if options.Model == "" || options.Version == "" || options.Hardware == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		response := replicate.Deployment{
+			Owner: owner.Username,
+			Name:  options.Name,
+			CurrentRelease: replicate.DeploymentRelease{
+				Number:  1,
+				Model:   options.Model,
+				Version: options.Version,
+				Configuration: replicate.DeploymentConfiguration{
+					Hardware:     options.Hardware,
+					MinInstances: options.MinInstances,
+					MaxInstances: options.MaxInstances,
+				},
+				CreatedBy: owner,
+				CreatedAt: timestamp,
+			},
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Fatalf("JSON encoding failed: %v", err)
+		}
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			deployment, err := client.CreateDeployment(ctx, tc.options)
+
+			if tc.wantError {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.want.Owner, deployment.Owner)
+				assert.Equal(t, tc.want.Name, deployment.Name)
+				assert.Equal(t, tc.want.CurrentRelease.Number, deployment.CurrentRelease.Number)
+				assert.Equal(t, tc.want.CurrentRelease.Model, deployment.CurrentRelease.Model)
+				assert.Equal(t, tc.want.CurrentRelease.Version, deployment.CurrentRelease.Version)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.Hardware, deployment.CurrentRelease.Configuration.Hardware)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.MinInstances, deployment.CurrentRelease.Configuration.MinInstances)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.MaxInstances, deployment.CurrentRelease.Configuration.MaxInstances)
+				assert.Equal(t, tc.want.CurrentRelease.CreatedBy.Name, deployment.CurrentRelease.CreatedBy.Name)
+				assert.Equal(t, tc.want.CurrentRelease.CreatedAt, deployment.CurrentRelease.CreatedAt)
+			}
+		})
+	}
+}
+
+func TestUpdateDeployment(t *testing.T) {
+	// Setup common variables and mock server response
+	timestamp := time.Now().Format(time.RFC3339)
+	owner := replicate.Account{
+		Type:     "organization",
+		Username: "acme",
+		Name:     "Acme, Inc.",
+	}
+
+	existingDeployment := replicate.Deployment{
+		Owner: "acme",
+		Name:  "existing-deployment",
+		CurrentRelease: replicate.DeploymentRelease{
+			Number:  1,
+			Model:   "acme/original-model",
+			Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+			Configuration: replicate.DeploymentConfiguration{
+				Hardware:     "gpu-t4",
+				MinInstances: 1,
+				MaxInstances: 5,
+			},
+			CreatedBy: owner,
+			CreatedAt: timestamp,
+		},
+	}
+
+	testCases := []struct {
+		name            string
+		deploymentOwner string
+		deploymentName  string
+		options         replicate.UpdateDeploymentOptions
+		want            *replicate.Deployment
+		wantError       bool
+	}{
+		{
+			name:            "Successful Full Update",
+			deploymentOwner: "acme",
+			deploymentName:  "existing-deployment",
+			options: replicate.UpdateDeploymentOptions{
+				Model:        ptrToString("acme/updated-model"),
+				Version:      ptrToString("b21cbe271e65c1718f2999b038c18b45e21e4fba961181fbfae9342fc53b9e05"),
+				Hardware:     ptrToString("cpu"),
+				MinInstances: ptrToInt(2),
+				MaxInstances: ptrToInt(10),
+			},
+			want: &replicate.Deployment{
+				Owner: "acme",
+				Name:  "existing-deployment",
+				CurrentRelease: replicate.DeploymentRelease{
+					Number:  2,
+					Model:   "acme/updated-model",
+					Version: "b21cbe271e65c1718f2999b038c18b45e21e4fba961181fbfae9342fc53b9e05",
+					Configuration: replicate.DeploymentConfiguration{
+						Hardware:     "cpu",
+						MinInstances: 2,
+						MaxInstances: 10,
+					},
+					CreatedBy: owner,
+					CreatedAt: timestamp,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name:            "Successful Partial Update - MinInstances Only",
+			deploymentOwner: "acme",
+			deploymentName:  "existing-deployment",
+			options: replicate.UpdateDeploymentOptions{
+				MinInstances: ptrToInt(3),
+			},
+			want: &replicate.Deployment{
+				Owner: "acme",
+				Name:  "existing-deployment",
+				CurrentRelease: replicate.DeploymentRelease{
+					Number:  2,
+					Model:   "acme/original-model",
+					Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+					Configuration: replicate.DeploymentConfiguration{
+						Hardware:     "gpu-t4",
+						MinInstances: 3,
+						MaxInstances: 5,
+					},
+					CreatedBy: owner,
+					CreatedAt: timestamp,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name:            "Successful Partial Update - Model and Version Only",
+			deploymentOwner: "acme",
+			deploymentName:  "existing-deployment",
+			options: replicate.UpdateDeploymentOptions{
+				Model:   ptrToString("acme/model-updated-only"),
+				Version: ptrToString("b21cbe271e65c1718f2999b038c18b45e21e4fba961181fbfae9342fc53b9e05"),
+			},
+			want: &replicate.Deployment{
+				Owner: "acme",
+				Name:  "existing-deployment",
+				CurrentRelease: replicate.DeploymentRelease{
+					Number:  2,
+					Model:   "acme/model-updated-only",
+					Version: "b21cbe271e65c1718f2999b038c18b45e21e4fba961181fbfae9342fc53b9e05",
+					Configuration: replicate.DeploymentConfiguration{
+						Hardware:     "gpu-t4",
+						MinInstances: 1,
+						MaxInstances: 5,
+					},
+					CreatedBy: owner,
+					CreatedAt: timestamp,
+				},
+			},
+			wantError: false,
+		},
+		{
+			name:            "Failed Update - Nonexistent Deployment",
+			deploymentOwner: "acme",
+			deploymentName:  "nonexistent-deployment",
+			options:         replicate.UpdateDeploymentOptions{},
+			want:            nil,
+			wantError:       true,
+		},
+	}
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPatch, r.Method)
+		// Extract deploymentOwner and deploymentName from the request URL path
+		pathSegments := strings.Split(r.URL.Path, "/")
+		if len(pathSegments) < 4 {
+			t.Fatal("Invalid URL path")
+		}
+		deploymentOwner := pathSegments[2]
+		deploymentName := pathSegments[3]
+
+		expectedPath := fmt.Sprintf("/deployments/%s/%s", deploymentOwner, deploymentName)
+		require.Equal(t, expectedPath, r.URL.Path)
+
+		var options replicate.UpdateDeploymentOptions
+		err := json.NewDecoder(r.Body).Decode(&options)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if deploymentName == "nonexistent-deployment" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		// Apply changes to the existing deployment based on the options provided
+		updatedDeployment := existingDeployment
+		updatedDeployment.CurrentRelease.Number++
+		if options.Model != nil {
+			updatedDeployment.CurrentRelease.Model = *options.Model
+		}
+		if options.Version != nil {
+			updatedDeployment.CurrentRelease.Version = *options.Version
+		}
+		if options.Hardware != nil {
+			updatedDeployment.CurrentRelease.Configuration.Hardware = *options.Hardware
+		}
+		if options.MinInstances != nil {
+			updatedDeployment.CurrentRelease.Configuration.MinInstances = *options.MinInstances
+		}
+		if options.MaxInstances != nil {
+			updatedDeployment.CurrentRelease.Configuration.MaxInstances = *options.MaxInstances
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(updatedDeployment)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			deployment, err := client.UpdateDeployment(ctx, tc.deploymentOwner, tc.deploymentName, tc.options)
+
+			if tc.wantError {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.want.Owner, deployment.Owner)
+				assert.Equal(t, tc.want.Name, deployment.Name)
+				assert.Equal(t, tc.want.CurrentRelease.Number, deployment.CurrentRelease.Number)
+				assert.Equal(t, tc.want.CurrentRelease.Model, deployment.CurrentRelease.Model)
+				assert.Equal(t, tc.want.CurrentRelease.Version, deployment.CurrentRelease.Version)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.Hardware, deployment.CurrentRelease.Configuration.Hardware)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.MinInstances, deployment.CurrentRelease.Configuration.MinInstances)
+				assert.Equal(t, tc.want.CurrentRelease.Configuration.MaxInstances, deployment.CurrentRelease.Configuration.MaxInstances)
+				assert.Equal(t, tc.want.CurrentRelease.CreatedBy.Name, deployment.CurrentRelease.CreatedBy.Name)
+				assert.Equal(t, tc.want.CurrentRelease.CreatedAt, deployment.CurrentRelease.CreatedAt)
+			}
+		})
+	}
+}
+
+// Helper functions to create pointers for the UpdateDeploymentOptions fields
+func ptrToString(s string) *string {
+	return &s
+}
+
+func ptrToInt(i int) *int {
+	return &i
+}
