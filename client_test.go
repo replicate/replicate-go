@@ -324,7 +324,6 @@ func TestDeleteModelVersion(t *testing.T) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		assert.Equal(t, fmt.Sprintf("/models/%s/%s/versions/%s", modelOwner, modelName, versionID), r.URL.Path)
 		w.WriteHeader(http.StatusAccepted)
-
 	}))
 	defer mockServer.Close()
 
