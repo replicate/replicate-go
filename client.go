@@ -27,7 +27,9 @@ var (
 		Jitter:     50 * time.Millisecond,
 	}
 
-	ErrNoAuth = errors.New(`no auth token or token source provided -- perhaps you forgot to pass replicate.WithToken("...")`)
+	ErrNoAuth       = errors.New(`no auth token or token source provided -- perhaps you forgot to pass replicate.WithToken("...")`)
+	ErrEnvVarNotSet = fmt.Errorf("%s environment variable not set", envAuthToken)
+	ErrEnvVarEmpty  = fmt.Errorf("%s environment variable is empty", envAuthToken)
 )
 
 // Client is a client for the Replicate API.
@@ -104,10 +106,10 @@ func WithTokenFromEnv() ClientOption {
 	return func(o *clientOptions) error {
 		token, ok := os.LookupEnv(envAuthToken)
 		if !ok {
-			return fmt.Errorf("%s environment variable not set", envAuthToken)
+			return ErrEnvVarNotSet
 		}
 		if token == "" {
-			return fmt.Errorf("%s environment variable is empty", envAuthToken)
+			return ErrEnvVarEmpty
 		}
 		o.auth = token
 		return nil
