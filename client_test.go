@@ -324,7 +324,6 @@ func TestDeleteModelVersion(t *testing.T) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		assert.Equal(t, fmt.Sprintf("/models/%s/%s/versions/%s", modelOwner, modelName, versionID), r.URL.Path)
 		w.WriteHeader(http.StatusAccepted)
-
 	}))
 	defer mockServer.Close()
 
@@ -1586,6 +1585,7 @@ func TestListFiles(t *testing.T) {
 	assert.Equal(t, "2022-04-26T22:13:06.224088Z", file.CreatedAt)
 	assert.Equal(t, "https://api.replicate.com/v1/files/"+fileID, file.URLs["get"])
 }
+
 func TestGetFile(t *testing.T) {
 	fileID := "file-id"
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -2252,6 +2252,30 @@ func TestUpdateDeployment(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeleteModel(t *testing.T) {
+	modelName := "replicate"
+	modelOwner := "hello-world"
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, fmt.Sprintf("/models/%s/%s", modelOwner, modelName), r.URL.Path)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = client.DeleteModel(ctx, modelOwner, modelName)
+	assert.NoError(t, err)
 }
 
 // Helper functions to create pointers for the UpdateDeploymentOptions fields

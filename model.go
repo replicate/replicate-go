@@ -110,6 +110,16 @@ func (r *Client) CreateModel(ctx context.Context, modelOwner string, modelName s
 	return model, nil
 }
 
+// DeleteModel deletes a model with no associated versions.
+func (r *Client) DeleteModel(ctx context.Context, modelOwner string, modelName string) error {
+	err := r.fetch(ctx, http.MethodDelete, fmt.Sprintf("/models/%s/%s", modelOwner, modelName), nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete model: %w", err)
+	}
+
+	return nil
+}
+
 // ListModelVersions lists the versions of a model.
 func (r *Client) ListModelVersions(ctx context.Context, modelOwner string, modelName string) (*Page[ModelVersion], error) {
 	response := &Page[ModelVersion]{}

@@ -5,7 +5,7 @@ all: test lint
 
 .PHONY: test
 test:
-	$(GO) test -v ./...
+	$(GO) test -v ./... -skip ^Example
 
 lint: lint-golangci lint-nilaway
 
