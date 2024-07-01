@@ -133,3 +133,13 @@ func (c *Client) UpdateDeployment(ctx context.Context, deploymentOwner string, d
 
 	return deployment, nil
 }
+
+// DeleteDeployment deletes an existing deployment.
+func (c *Client) DeleteDeployment(ctx context.Context, deploymentOwner string, deploymentName string) error {
+	path := fmt.Sprintf("/deployments/%s/%s", deploymentOwner, deploymentName)
+	err := c.fetch(ctx, http.MethodDelete, path, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete deployment: %w", err)
+	}
+	return nil
+}
