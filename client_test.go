@@ -2254,6 +2254,30 @@ func TestUpdateDeployment(t *testing.T) {
 	}
 }
 
+func TestDeleteDeployment(t *testing.T) {
+	deploymentOwner := "acme"
+	deploymentName := "existing-deployment"
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, fmt.Sprintf("/deployments/%s/%s", deploymentOwner, deploymentName), r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = client.DeleteDeployment(ctx, deploymentOwner, deploymentName)
+	assert.NoError(t, err)
+}
+
 func TestDeleteModel(t *testing.T) {
 	modelName := "replicate"
 	modelOwner := "hello-world"
