@@ -431,7 +431,6 @@ func TestCreatePrediction(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
 		assert.Equal(t, "https://example.com/webhook", requestBody["webhook"])
 		assert.Equal(t, []interface{}{"start", "completed"}, requestBody["webhook_events_filter"])
-		assert.Equal(t, true, requestBody["stream"])
 
 		response := replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
@@ -512,9 +511,6 @@ func TestCreatePredictionWithDeployment(t *testing.T) {
 		if _, exists := requestBody["webhook_events_filter"]; exists {
 			assert.Fail(t, "webhook_events_filter should not be present")
 		}
-		if _, exists := requestBody["stream"]; exists {
-			assert.Fail(t, "stream should not be present")
-		}
 
 		response := replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
@@ -590,7 +586,6 @@ func TestCreatePredictionWithModel(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
 		assert.Equal(t, "https://example.com/webhook", requestBody["webhook"])
 		assert.Equal(t, []interface{}{"start", "completed"}, requestBody["webhook_events_filter"])
-		assert.Equal(t, true, requestBody["stream"])
 
 		response := replicate.Prediction{
 			ID:        "ufawqhfynnddngldkgtslldrkq",
@@ -1352,7 +1347,6 @@ func TestStream(t *testing.T) {
 
 			assert.Equal(t, "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", requestBody["version"])
 			assert.Equal(t, map[string]interface{}{"text": "Alice"}, requestBody["input"])
-			assert.Equal(t, true, requestBody["stream"])
 
 			response := replicate.Prediction{
 				ID:        "ufawqhfynnddngldkgtslldrkq",

@@ -123,10 +123,6 @@ func (r *Client) CreatePrediction(ctx context.Context, version string, input Pre
 		}
 	}
 
-	if stream {
-		data["stream"] = true
-	}
-
 	prediction := &Prediction{}
 	err := r.fetch(ctx, http.MethodPost, "/predictions", data, prediction)
 	if err != nil {

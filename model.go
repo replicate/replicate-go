@@ -162,10 +162,6 @@ func (r *Client) CreatePredictionWithModel(ctx context.Context, modelOwner strin
 		}
 	}
 
-	if stream {
-		data["stream"] = true
-	}
-
 	prediction := &Prediction{}
 	err := r.fetch(ctx, http.MethodPost, fmt.Sprintf("/models/%s/%s/predictions", modelOwner, modelName), data, prediction)
 	if err != nil {

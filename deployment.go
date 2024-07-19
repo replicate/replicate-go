@@ -56,10 +56,6 @@ func (c *Client) CreatePredictionWithDeployment(ctx context.Context, deploymentO
 		}
 	}
 
-	if stream {
-		data["stream"] = true
-	}
-
 	prediction := &Prediction{}
 	path := fmt.Sprintf("/deployments/%s/%s/predictions", deploymentOwner, deploymentName)
 	err := c.fetch(ctx, http.MethodPost, path, data, prediction)
