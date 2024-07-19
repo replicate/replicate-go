@@ -3,6 +3,7 @@ package replicate_test
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/replicate/replicate-go"
 )
@@ -58,4 +59,27 @@ func ExampleClient_CreatePrediction() {
 
 	fmt.Println(prediction.Status)
 	// Output: succeeded
+}
+
+func ExampleClient_SearchModels() {
+	ctx := context.TODO()
+
+	r8, err := replicate.NewClient(replicate.WithTokenFromEnv())
+	if err != nil {
+		panic(err)
+	}
+
+	query := "llama"
+	modelsPage, err := r8.SearchModels(ctx, query)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, model := range modelsPage.Results {
+		if model.Owner == "meta" && strings.HasPrefix(model.Name, "meta-llama-3") {
+			fmt.Printf("Found Meta Llama 3 model")
+			break
+		}
+	}
+	// Output: Found Meta Llama 3 model
 }

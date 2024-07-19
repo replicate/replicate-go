@@ -205,6 +205,60 @@ func TestListModels(t *testing.T) {
 	assert.Equal(t, "codellama-13b", modelsPage.Results[1].Name)
 }
 
+func TestSearchModels(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/models", r.URL.Path)
+		assert.Equal(t, "QUERY", r.Method)
+		assert.Equal(t, "text/plain", r.Header.Get("Content-Type"))
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+
+		assert.Equal(t, "stable diffusion", string(body))
+
+		response := replicate.Page[replicate.Model]{
+			Results: []replicate.Model{
+				{
+					Owner:       "stability-ai",
+					Name:        "sdxl",
+					Description: "A text-to-image generative AI model that creates beautiful 1024x1024 images",
+				},
+				{
+					Owner:       "stability-ai",
+					Name:        "stable-diffusion",
+					Description: "Stable Diffusion is a text-to-image diffusion model",
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NotNil(t, client)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	modelsPage, err := client.SearchModels(ctx, "stable diffusion")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(modelsPage.Results))
+	assert.Equal(t, "stability-ai", modelsPage.Results[0].Owner)
+	assert.Equal(t, "sdxl", modelsPage.Results[0].Name)
+	assert.Equal(t, "stability-ai", modelsPage.Results[1].Owner)
+	assert.Equal(t, "stable-diffusion", modelsPage.Results[1].Name)
+}
+
 func TestGetModel(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/models/replicate/hello-world", r.URL.Path)
