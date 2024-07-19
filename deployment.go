@@ -44,6 +44,8 @@ func (d *Deployment) UnmarshalJSON(data []byte) error {
 }
 
 // CreateDeploymentPrediction sends a request to the Replicate API to create a prediction using the specified deployment.
+//
+// The stream parameter has no effect, as streaming is now enabled by default for all predictions. For more information, see https://replicate.com/changelog/2024-07-15-streams-always-available-stream-parameter-deprecated
 func (c *Client) CreatePredictionWithDeployment(ctx context.Context, deploymentOwner string, deploymentName string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
 	data := map[string]interface{}{
 		"input": input,

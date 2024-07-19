@@ -103,6 +103,8 @@ func (p Prediction) Progress() *PredictionProgress {
 }
 
 // CreatePrediction sends a request to the Replicate API to create a prediction.
+//
+// The stream parameter has no effect, as streaming is now enabled by default for all predictions. For more information, see https://replicate.com/changelog/2024-07-15-streams-always-available-stream-parameter-deprecated
 func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
 	// Convert File objects in input to their "get" URL value
 	for key, value := range input {
