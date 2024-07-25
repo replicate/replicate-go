@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type Model struct {
@@ -75,6 +76,21 @@ func (r *Client) ListModels(ctx context.Context) (*Page[Model], error) {
 	err := r.fetch(ctx, http.MethodGet, "/models", nil, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list models: %w", err)
+	}
+	return response, nil
+}
+
+// SearchModels searches for public models.
+func (r *Client) SearchModels(ctx context.Context, query string) (*Page[Model], error) {
+	response := &Page[Model]{}
+	request, err := r.newRequest(ctx, "QUERY", "/models", strings.NewReader(query))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	request.Header.Set("Content-Type", "text/plain")
+	err = r.do(request, response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search models: %w", err)
 	}
 	return response, nil
 }
