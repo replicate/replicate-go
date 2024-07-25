@@ -166,7 +166,11 @@ func (r *Client) DeleteModelVersion(ctx context.Context, modelOwner string, mode
 }
 
 // CreatePredictionWithModel sends a request to the Replicate API to create a prediction for a model.
-func (r *Client) CreatePredictionWithModel(ctx context.Context, modelOwner string, modelName string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
+//
+// Deprecated: The stream parameter is no longer used and will be removed in a future version.
+// Streaming is now enabled by default for all predictions.
+// For more information, see https://replicate.com/changelog/2024-07-15-streams-always-available-stream-parameter-deprecated
+func (r *Client) CreatePredictionWithModel(ctx context.Context, modelOwner string, modelName string, input PredictionInput, webhook *Webhook, _ bool) (*Prediction, error) {
 	data := map[string]interface{}{
 		"input": input,
 	}
@@ -176,10 +180,6 @@ func (r *Client) CreatePredictionWithModel(ctx context.Context, modelOwner strin
 		if len(webhook.Events) > 0 {
 			data["webhook_events_filter"] = webhook.Events
 		}
-	}
-
-	if stream {
-		data["stream"] = true
 	}
 
 	prediction := &Prediction{}
