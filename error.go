@@ -55,7 +55,7 @@ func (e APIError) Error() string {
 
 	output := strings.Join(components, ": ")
 	if output == "" {
-		output = "Unknown error"
+		output = "unknown error"
 	}
 
 	if e.Instance != "" {
