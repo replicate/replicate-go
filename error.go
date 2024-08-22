@@ -78,3 +78,16 @@ func (e *APIError) WriteHTTPResponse(w http.ResponseWriter) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
+
+// ModelError represents an error returned by a model for a failed prediction.
+type ModelError struct {
+	Prediction *Prediction `json:"prediction"`
+}
+
+func (e *ModelError) Error() string {
+	if e.Prediction == nil {
+		return "unknown model error"
+	}
+
+	return fmt.Sprintf("model error: %s", e.Prediction.Error)
+}
