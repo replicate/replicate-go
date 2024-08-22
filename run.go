@@ -21,6 +21,13 @@ func (r *Client) Run(ctx context.Context, identifier string, input PredictionInp
 	}
 
 	err = r.Wait(ctx, prediction)
+	if err != nil {
+		return nil, err
+	}
 
-	return prediction.Output, err
+	if prediction.Error != nil {
+		return nil, &ModelError{Prediction: prediction}
+	}
+
+	return prediction.Output, nil
 }

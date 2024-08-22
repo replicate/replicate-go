@@ -1075,6 +1075,96 @@ func TestWaitAsync(t *testing.T) {
 	assert.Equal(t, replicate.Succeeded, lastStatus)
 }
 
+func TestRun(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/predictions":
+			assert.Equal(t, http.MethodPost, r.Method)
+			prediction := replicate.Prediction{
+				ID:      "gtsllfynndufawqhdngldkdrkq",
+				Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				Status:  replicate.Starting,
+			}
+			json.NewEncoder(w).Encode(prediction)
+		case "/predictions/gtsllfynndufawqhdngldkdrkq":
+			assert.Equal(t, http.MethodGet, r.Method)
+			prediction := replicate.Prediction{
+				ID:      "gtsllfynndufawqhdngldkdrkq",
+				Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				Status:  replicate.Succeeded,
+				Output:  "Hello, world!",
+			}
+			json.NewEncoder(w).Encode(prediction)
+		default:
+			t.Fatalf("Unexpected request to %s", r.URL.Path)
+		}
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	input := replicate.PredictionInput{"prompt": "Hello"}
+	output, err := client.Run(ctx, "owner/model:5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", input, nil)
+
+	require.NoError(t, err)
+	assert.NotNil(t, output)
+	assert.Equal(t, "Hello, world!", output)
+}
+
+func TestRunReturningModelError(t *testing.T) {
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/predictions":
+			assert.Equal(t, http.MethodPost, r.Method)
+			prediction := replicate.Prediction{
+				ID:      "fynndufawqhdngldkgtslldrkq",
+				Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				Status:  replicate.Starting,
+			}
+			json.NewEncoder(w).Encode(prediction)
+		case "/predictions/fynndufawqhdngldkgtslldrkq":
+			assert.Equal(t, http.MethodGet, r.Method)
+
+			logs := "Could not say hello"
+			prediction := replicate.Prediction{
+				ID:      "fynndufawqhdngldkgtslldrkq",
+				Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				Status:  replicate.Failed,
+				Logs:    &logs,
+				Error:   "Model execution failed",
+			}
+			json.NewEncoder(w).Encode(prediction)
+		default:
+			t.Fatalf("Unexpected request to %s", r.URL.Path)
+		}
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	input := replicate.PredictionInput{"prompt": "Hello"}
+	_, err = client.Run(ctx, "replicate/hello-world:5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", input, nil)
+
+	require.Error(t, err)
+	modelErr, ok := err.(*replicate.ModelError)
+	require.True(t, ok, "Expected error to be of type *replicate.ModelError")
+	assert.Equal(t, "model error: Model execution failed", modelErr.Error())
+	assert.Equal(t, "fynndufawqhdngldkgtslldrkq", modelErr.Prediction.ID)
+	assert.Equal(t, replicate.Failed, modelErr.Prediction.Status)
+	assert.Equal(t, "Model execution failed", modelErr.Prediction.Error)
+	assert.Equal(t, "Could not say hello", *modelErr.Prediction.Logs)
+}
+
 func TestCreateTraining(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
