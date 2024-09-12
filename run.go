@@ -1,6 +1,7 @@
 package replicate
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -99,7 +100,7 @@ func transformOutput(ctx context.Context, value interface{}, client *Client) (in
 	return value, nil
 }
 
-func readDataURI(uri string) ([]byte, error) {
+func readDataURI(uri string) (io.ReadCloser, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -111,27 +112,34 @@ func readDataURI(uri string) ([]byte, error) {
 	if !found {
 		return nil, errors.New("invalid data URI format")
 	}
+	var reader io.Reader
 	if strings.HasSuffix(mediatype, ";base64") {
-		return base64.StdEncoding.DecodeString(data)
+		decoded, err := base64.StdEncoding.DecodeString(data)
+		if err != nil {
+			return nil, err
+		}
+		reader = bytes.NewReader(decoded)
+	} else {
+		reader = strings.NewReader(data)
 	}
-	return []byte(data), nil
+	return io.NopCloser(reader), nil
 }
 
-func readHTTP(ctx context.Context, url string, client *Client) ([]byte, error) {
+func readHTTP(ctx context.Context, url string, client *Client) (io.ReadCloser, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 	resp, err := client.c.Do(req)
-	if resp == nil || resp.Body == nil {
-		return nil, errors.New("HTTP request failed to get a response")
-	}
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	if resp == nil || resp.Body == nil {
+		return nil, errors.New("HTTP request failed to get a response")
+	}
 	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
 		return nil, fmt.Errorf("HTTP request failed with status code %d", resp.StatusCode)
 	}
-	return io.ReadAll(resp.Body)
+	return resp.Body, nil
 }
