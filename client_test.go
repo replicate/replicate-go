@@ -1475,6 +1475,79 @@ func TestAutomaticallyRetryPostRequests(t *testing.T) {
 	assert.ErrorContains(t, err, http.StatusText(http.StatusInternalServerError))
 }
 
+func TestRunWithOptions(t *testing.T) {
+	var mockServer *httptest.Server
+	mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/predictions":
+			assert.Equal(t, http.MethodPost, r.Method)
+			prediction := replicate.Prediction{
+				ID:      "gtsllfynndufawqhdngldkdrkq",
+				Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				Status:  replicate.Starting,
+			}
+			json.NewEncoder(w).Encode(prediction)
+		case "/predictions/gtsllfynndufawqhdngldkdrkq":
+			assert.Equal(t, http.MethodGet, r.Method)
+			prediction := replicate.Prediction{
+				ID:      "gtsllfynndufawqhdngldkdrkq",
+				Version: "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+				Status:  replicate.Succeeded,
+				Output: map[string]interface{}{
+					"image": mockServer.URL + "/output.png",
+					"text":  "Hello, world!",
+				},
+			}
+			json.NewEncoder(w).Encode(prediction)
+		case "/output.png":
+			w.Header().Set("Content-Type", "image/png")
+			w.Write([]byte("mock image data"))
+		default:
+			t.Fatalf("Unexpected request to %s", r.URL.Path)
+		}
+	}))
+	defer mockServer.Close()
+
+	client, err := replicate.NewClient(
+		replicate.WithToken("test-token"),
+		replicate.WithBaseURL(mockServer.URL),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	input := replicate.PredictionInput{"prompt": "A test image"}
+
+	// Test with WithFileOutput option
+	output, err := client.RunWithOptions(ctx, "owner/model:5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", input, nil, replicate.WithFileOutput())
+
+	require.NoError(t, err)
+	assert.NotNil(t, output)
+
+	// Check if the image output is transformed to io.ReadCloser
+	imageOutput, ok := output.(map[string]interface{})["image"].(io.ReadCloser)
+	require.True(t, ok, "Expected image output to be io.ReadCloser")
+
+	imageData, err := io.ReadAll(imageOutput)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("mock image data"), imageData)
+
+	// Check if the text output remains unchanged
+	textOutput, ok := output.(map[string]interface{})["text"].(string)
+	require.True(t, ok, "Expected text output to be string")
+	assert.Equal(t, "Hello, world!", textOutput)
+
+	// Test without WithFileOutput option
+	outputWithoutFileOption, err := client.RunWithOptions(ctx, "owner/model:5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa", input, nil)
+
+	require.NoError(t, err)
+	assert.NotNil(t, outputWithoutFileOption)
+
+	// Check if the image output remains a URL string
+	imageOutputURL, ok := outputWithoutFileOption.(map[string]interface{})["image"].(string)
+	require.True(t, ok, "Expected image output to be string")
+	assert.Equal(t, mockServer.URL+"/output.png", imageOutputURL)
+}
+
 func TestStream(t *testing.T) {
 	tokens := []string{"Alpha", "Bravo", "Charlie", "Delta", "Echo"}
 
