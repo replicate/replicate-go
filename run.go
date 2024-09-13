@@ -20,6 +20,12 @@ type runOptions struct {
 	useFileOutput bool
 }
 
+// FileOutput is a custom type that implements io.ReadCloser and includes a URL field
+type FileOutput struct {
+	io.ReadCloser
+	URL string
+}
+
 // WithFileOutput sets the UseFileOutput option to true
 func WithFileOutput() RunOption {
 	return func(o *runOptions) {
@@ -100,7 +106,7 @@ func transformOutput(ctx context.Context, value interface{}, client *Client) (in
 	return value, nil
 }
 
-func readDataURI(uri string) (io.ReadCloser, error) {
+func readDataURI(uri string) (*FileOutput, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -122,10 +128,13 @@ func readDataURI(uri string) (io.ReadCloser, error) {
 	} else {
 		reader = strings.NewReader(data)
 	}
-	return io.NopCloser(reader), nil
+	return &FileOutput{
+		ReadCloser: io.NopCloser(reader),
+		URL:        uri,
+	}, nil
 }
 
-func readHTTP(ctx context.Context, url string, client *Client) (io.ReadCloser, error) {
+func readHTTP(ctx context.Context, url string, client *Client) (*FileOutput, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -141,5 +150,9 @@ func readHTTP(ctx context.Context, url string, client *Client) (io.ReadCloser, e
 		resp.Body.Close()
 		return nil, fmt.Errorf("HTTP request failed with status code %d", resp.StatusCode)
 	}
-	return resp.Body, nil
+
+	return &FileOutput{
+		ReadCloser: resp.Body,
+		URL:        url,
+	}, nil
 }
