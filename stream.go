@@ -171,7 +171,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 		for {
 			select {
 			case <-ctx.Done():
-				return nil
+				return ctx.Err()
 			case <-done:
 				return nil
 			default:
