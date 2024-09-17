@@ -18,6 +18,9 @@ var (
 )
 
 const (
+	// SSETypeDefault is the default type of SSEEvent.
+	SSETypeDefault = "message"
+
 	// SSETypeDone is the type of SSEEvent that indicates the prediction is done. The Data field will contain an empty JSON object.
 	SSETypeDone = "done"
 
@@ -202,7 +205,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 					b := buf.Bytes()
 					buf.Reset()
 
-					event := SSEEvent{}
+					event := SSEEvent{Type: SSETypeDefault}
 					if err := event.decode(b); err != nil {
 						errChan <- err
 					}
