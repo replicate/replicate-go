@@ -179,7 +179,11 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 				if err != nil {
 					return err
 				}
-				lineChan <- line
+				select {
+				case lineChan <- line:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
 			}
 		}
 	})
