@@ -166,6 +166,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 
 	g.Go(func() error {
 		defer close(lineChan)
+		defer resp.Body.Close()
 
 		for {
 			select {
@@ -176,7 +177,6 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 			default:
 				line, err := reader.ReadBytes('\n')
 				if err != nil {
-					defer resp.Body.Close()
 					return err
 				}
 				lineChan <- line
