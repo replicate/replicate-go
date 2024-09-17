@@ -222,30 +222,27 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 	}()
 
 	go func() {
+		err := g.Wait()
+
 		defer close(sseChan)
 		defer close(errChan)
 
-		for {
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				// Attempt to reconnect if the connection was closed before the stream was done
+				r.streamPrediction(ctx, prediction, lastEvent, sseChan, errChan)
+				return
+			}
+
+			if errors.Is(err, context.Canceled) {
+				// Context was canceled, simply return
+				return
+			}
+
 			select {
-			case <-ctx.Done():
-				return
-			case <-done:
-				return
+			case errChan <- err:
 			default:
-				err := g.Wait()
-				if err != nil {
-					if err == io.EOF {
-						// Attempt to reconnect if the connection was closed before the stream was done
-						r.streamPrediction(ctx, prediction, lastEvent, sseChan, errChan)
-						continue
-					}
-
-					if errors.Is(err, context.Canceled) {
-						return
-					}
-
-					errChan <- err
-				}
+				// errChan is full or closed
 			}
 		}
 	}()
