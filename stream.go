@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 	"unicode/utf8"
 
 	"golang.org/x/sync/errgroup"
@@ -189,7 +188,6 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 
 	g, ctx := errgroup.WithContext(ctx)
 	done := make(chan struct{})
-	closeOnce := sync.Once{}
 
 	g.Go(func() error {
 		defer close(lineChan)
@@ -282,9 +280,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 			}
 		}
 
-		closeOnce.Do(func() {
-			close(sseChan)
-			close(errChan)
-		})
+		close(sseChan)
+		close(errChan)
 	}()
 }
