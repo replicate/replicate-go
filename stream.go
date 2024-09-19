@@ -208,7 +208,8 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 					event := SSEEvent{Type: SSETypeDefault}
 					if err := event.decode(b); err != nil {
 						errChan <- err
-						return err
+						close(done)
+						return
 					}
 
 					sseChan <- event
