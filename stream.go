@@ -42,7 +42,7 @@ type SSEEvent struct {
 }
 
 func (e *SSEEvent) decode(b []byte) error {
-	data := [][]byte{}
+	chunks := [][]byte{}
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		// Parse field and value from line
 		parts := bytes.SplitN(line, []byte{':'}, 2)
@@ -65,17 +65,17 @@ func (e *SSEEvent) decode(b []byte) error {
 		case "event":
 			e.Type = string(value)
 		case "data":
-			data = append(data, value)
+			chunks = append(chunks, value)
 		default:
 			// ignore
 		}
 	}
 
-	if !utf8.Valid(bytes.Join(data, []byte("\n"))) {
+	data := bytes.Join(chunks, []byte("\n"))
+	if !utf8.Valid(data) {
 		return ErrInvalidUTF8Data
 	}
-
-	e.Data = string(bytes.Join(data, []byte("\n")))
+	e.Data = string(data)
 
 	return nil
 }
