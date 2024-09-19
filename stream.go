@@ -157,8 +157,10 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 	}
 
 	resp, err := r.c.Do(req)
-	if err != nil {
-		if resp != nil {
+	if err != nil || resp == nil {
+		if resp == nil {
+			err = errors.New("received nil response")
+		} else {
 			defer resp.Body.Close()
 		}
 		select {
