@@ -41,8 +41,11 @@ type SSEEvent struct {
 	Data string
 }
 
-func (e *SSEEvent) decode(b []byte) error {
+// decodeSSEEvent parses the raw SSE event data and returns an SSEEvent pointer and an error.
+func decodeSSEEvent(b []byte) (*SSEEvent, error) {
 	chunks := [][]byte{}
+	e := &SSEEvent{Type: SSETypeDefault}
+
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		// Parse field and value from line
 		parts := bytes.SplitN(line, []byte{':'}, 2)
@@ -56,7 +59,7 @@ func (e *SSEEvent) decode(b []byte) error {
 		if len(parts) == 2 {
 			value = parts[1]
 			// Trim leading space if present
-			value, _ = bytes.CutPrefix(value, []byte(" "))
+			value = bytes.TrimPrefix(value, []byte(" "))
 		}
 
 		switch field {
@@ -73,11 +76,16 @@ func (e *SSEEvent) decode(b []byte) error {
 
 	data := bytes.Join(chunks, []byte("\n"))
 	if !utf8.Valid(data) {
-		return ErrInvalidUTF8Data
+		return nil, ErrInvalidUTF8Data
 	}
 	e.Data = string(data)
 
-	return nil
+	// Return nil if event data is empty and event type is not "done"
+	if e.Data == "" && e.Type != SSETypeDone {
+		return nil, nil
+	}
+
+	return e, nil
 }
 
 func (e *SSEEvent) String() string {
@@ -208,18 +216,22 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 					b := buf.Bytes()
 					buf.Reset()
 
-					event := SSEEvent{Type: SSETypeDefault}
-					if err := event.decode(b); err != nil {
+					event, err := decodeSSEEvent(b)
+					if err != nil {
 						select {
 						case errChan <- err:
 						default:
 						}
-						close(done)
-						return
+						continue
+					}
+
+					if event == nil {
+						// Skip empty events
+						continue
 					}
 
 					select {
-					case sseChan <- event:
+					case sseChan <- *event:
 					case <-done:
 						return
 					case <-ctx.Done():
