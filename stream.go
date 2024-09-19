@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"unicode/utf8"
 
 	"golang.org/x/sync/errgroup"
@@ -90,7 +91,13 @@ func decodeSSEEvent(b []byte) (*SSEEvent, error) {
 
 func (e *SSEEvent) String() string {
 	switch e.Type {
-	case "output":
+	case SSETypeDone:
+		return ""
+	case SSETypeError:
+		return e.Data
+	case SSETypeLogs:
+		return e.Data
+	case SSETypeOutput:
 		return e.Data
 	default:
 		return ""
@@ -134,18 +141,18 @@ func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (
 }
 
 func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) {
-	g, ctx := errgroup.WithContext(ctx)
-	done := make(chan struct{})
-
 	url := prediction.URLs["stream"]
 	if url == "" {
 		errChan <- errors.New("streaming not supported or not enabled for this prediction")
 		return
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet, url, nil)
 	if err != nil {
-		errChan <- fmt.Errorf("failed to create request: %w", err)
+		select {
+		case errChan <- fmt.Errorf("failed to create request: %w", err):
+		default:
+		}
 		return
 	}
 	req.Header.Set("Accept", "text/event-stream")
@@ -157,22 +164,32 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 	}
 
 	resp, err := r.c.Do(req)
-	if err != nil || resp == nil {
+	if err != nil {
 		if resp != nil {
-			resp.Body.Close()
+			defer resp.Body.Close()
 		}
-		errChan <- fmt.Errorf("failed to send request: %w", err)
+		select {
+		case errChan <- fmt.Errorf("failed to send request: %w", err):
+		default:
+		}
 		return
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		errChan <- fmt.Errorf("received invalid status code: %d", resp.StatusCode)
+		select {
+		case errChan <- fmt.Errorf("received invalid status code: %d", resp.StatusCode):
+		default:
+		}
 		return
 	}
 
 	reader := bufio.NewReader(resp.Body)
 	var buf bytes.Buffer
 	lineChan := make(chan []byte)
+
+	g, ctx := errgroup.WithContext(ctx)
+	done := make(chan struct{})
+	closeOnce := sync.Once{}
 
 	g.Go(func() error {
 		defer close(lineChan)
@@ -250,9 +267,6 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 	go func() {
 		err := g.Wait()
 
-		defer close(sseChan)
-		defer close(errChan)
-
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				// Attempt to reconnect if the connection was closed before the stream was done
@@ -267,5 +281,10 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 				}
 			}
 		}
+
+		closeOnce.Do(func() {
+			close(sseChan)
+			close(errChan)
+		})
 	}()
 }
