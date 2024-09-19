@@ -90,12 +90,6 @@ func decodeSSEEvent(b []byte) (*SSEEvent, error) {
 
 func (e *SSEEvent) String() string {
 	switch e.Type {
-	case SSETypeDone:
-		return ""
-	case SSETypeError:
-		return e.Data
-	case SSETypeLogs:
-		return e.Data
 	case SSETypeOutput:
 		return e.Data
 	default:
