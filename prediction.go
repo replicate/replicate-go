@@ -103,7 +103,11 @@ func (p Prediction) Progress() *PredictionProgress {
 }
 
 // CreatePrediction sends a request to the Replicate API to create a prediction.
-func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
+//
+// Deprecated: The stream parameter is no longer used and will be removed in a future version.
+// Streaming is now enabled by default for all predictions.
+// For more information, see https://replicate.com/changelog/2024-07-15-streams-always-available-stream-parameter-deprecated
+func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, _ bool) (*Prediction, error) {
 	// Convert File objects in input to their "get" URL value
 	for key, value := range input {
 		if file, ok := value.(*File); ok {
@@ -121,10 +125,6 @@ func (r *Client) CreatePrediction(ctx context.Context, version string, input Pre
 		if len(webhook.Events) > 0 {
 			data["webhook_events_filter"] = webhook.Events
 		}
-	}
-
-	if stream {
-		data["stream"] = true
 	}
 
 	prediction := &Prediction{}
