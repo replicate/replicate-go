@@ -140,7 +140,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 		return
 	}
 
-	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		select {
 		case errChan <- fmt.Errorf("failed to create request: %w", err):
