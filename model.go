@@ -167,25 +167,16 @@ func (r *Client) DeleteModelVersion(ctx context.Context, modelOwner string, mode
 
 // CreatePredictionWithModel sends a request to the Replicate API to create a prediction for a model.
 func (r *Client) CreatePredictionWithModel(ctx context.Context, modelOwner string, modelName string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
-	data := map[string]interface{}{
-		"input": input,
-	}
+	path := fmt.Sprintf("/models/%s/%s/predictions", modelOwner, modelName)
 
-	if webhook != nil {
-		data["webhook"] = webhook.URL
-		if len(webhook.Events) > 0 {
-			data["webhook_events_filter"] = webhook.Events
-		}
-	}
-
-	if stream {
-		data["stream"] = true
+	req, err := r.createPredictionRequest(ctx, path, nil, input, webhook, stream)
+	if err != nil {
+		return nil, err
 	}
 
 	prediction := &Prediction{}
-	err := r.fetch(ctx, http.MethodPost, fmt.Sprintf("/models/%s/%s/predictions", modelOwner, modelName), data, prediction)
-	if err != nil {
-		return nil, err
+	if err := r.do(req, prediction); err != nil {
+		return nil, fmt.Errorf("failed to create prediction with model: %w", err)
 	}
 
 	return prediction, nil

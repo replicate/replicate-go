@@ -45,26 +45,16 @@ func (d *Deployment) UnmarshalJSON(data []byte) error {
 
 // CreateDeploymentPrediction sends a request to the Replicate API to create a prediction using the specified deployment.
 func (c *Client) CreatePredictionWithDeployment(ctx context.Context, deploymentOwner string, deploymentName string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
-	data := map[string]interface{}{
-		"input": input,
-	}
+	path := fmt.Sprintf("/deployments/%s/%s/predictions", deploymentOwner, deploymentName)
 
-	if webhook != nil {
-		data["webhook"] = webhook.URL
-		if len(webhook.Events) > 0 {
-			data["webhook_events_filter"] = webhook.Events
-		}
-	}
-
-	if stream {
-		data["stream"] = true
+	req, err := c.createPredictionRequest(ctx, path, nil, input, webhook, stream)
+	if err != nil {
+		return nil, err
 	}
 
 	prediction := &Prediction{}
-	path := fmt.Sprintf("/deployments/%s/%s/predictions", deploymentOwner, deploymentName)
-	err := c.fetch(ctx, http.MethodPost, path, data, prediction)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create prediction: %w", err)
+	if err := c.do(req, prediction); err != nil {
+		return nil, fmt.Errorf("failed to create prediction with deployment: %w", err)
 	}
 
 	return prediction, nil

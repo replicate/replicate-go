@@ -1,6 +1,7 @@
 package replicate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -102,8 +103,8 @@ func (p Prediction) Progress() *PredictionProgress {
 	return nil
 }
 
-// CreatePrediction sends a request to the Replicate API to create a prediction.
-func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
+// createPredictionRequest creates a prediction request.
+func (r *Client) createPredictionRequest(ctx context.Context, path string, data map[string]interface{}, input PredictionInput, webhook *Webhook, stream bool) (*http.Request, error) {
 	// Convert File objects in input to their "get" URL value
 	for key, value := range input {
 		if file, ok := value.(*File); ok {
@@ -111,10 +112,11 @@ func (r *Client) CreatePrediction(ctx context.Context, version string, input Pre
 		}
 	}
 
-	data := map[string]interface{}{
-		"version": version,
-		"input":   input,
+	if data == nil {
+		data = make(map[string]interface{})
 	}
+
+	data["input"] = input
 
 	if webhook != nil {
 		data["webhook"] = webhook.URL
@@ -127,9 +129,37 @@ func (r *Client) CreatePrediction(ctx context.Context, version string, input Pre
 		data["stream"] = true
 	}
 
-	prediction := &Prediction{}
-	err := r.fetch(ctx, http.MethodPost, "/predictions", data, prediction)
+	bodyBuffer := &bytes.Buffer{}
+	if data != nil {
+		bodyBytes, err := json.Marshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
+		bodyBuffer = bytes.NewBuffer(bodyBytes)
+	}
+
+	req, err := r.newRequest(ctx, http.MethodPost, path, bodyBuffer)
 	if err != nil {
+		return nil, fmt.Errorf("failed to create prediction request: %w", err)
+	}
+
+	return req, nil
+}
+
+// CreatePrediction creates a prediction for a specific version of a model.
+func (r *Client) CreatePrediction(ctx context.Context, version string, input PredictionInput, webhook *Webhook, stream bool) (*Prediction, error) {
+	path := "/predictions"
+	data := map[string]interface{}{
+		"version": version,
+	}
+
+	req, err := r.createPredictionRequest(ctx, path, data, input, webhook, stream)
+	if err != nil {
+		return nil, err
+	}
+
+	prediction := &Prediction{}
+	if err := r.do(req, prediction); err != nil {
 		return nil, fmt.Errorf("failed to create prediction: %w", err)
 	}
 
