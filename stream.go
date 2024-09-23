@@ -136,7 +136,10 @@ func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (
 func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) {
 	url := prediction.URLs["stream"]
 	if url == "" {
-		errChan <- errors.New("streaming not supported or not enabled for this prediction")
+		select {
+		case errChan <- errors.New("streaming not supported or not enabled for this prediction"):
+		default:
+		}
 		return
 	}
 
