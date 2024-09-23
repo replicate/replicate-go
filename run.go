@@ -95,13 +95,17 @@ func transformOutput(ctx context.Context, value interface{}, client *Client) (in
 		}
 		return v, nil
 	case string:
-		if strings.HasPrefix(v, "data:") {
-			return readDataURI(v)
-		}
-		if strings.HasPrefix(v, "https:") || strings.HasPrefix(v, "http:") {
-			return readHTTP(ctx, v, client)
-		}
-		return v, nil
+		return convertStringToFileOutput(ctx, v, client)
+	}
+	return value, nil
+}
+
+func convertStringToFileOutput(ctx context.Context, value string, client *Client) (interface{}, error) {
+	if strings.HasPrefix(value, "data:") {
+		return readDataURI(value)
+	}
+	if strings.HasPrefix(value, "https:") || strings.HasPrefix(value, "http:") {
+		return readHTTP(ctx, value, client)
 	}
 	return value, nil
 }

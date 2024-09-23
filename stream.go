@@ -97,7 +97,12 @@ func (e *SSEEvent) String() string {
 	}
 }
 
-func (r *Client) Stream(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook) (<-chan SSEEvent, <-chan error) {
+func (r *Client) Stream(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook, opts ...RunOption) (<-chan SSEEvent, <-chan error) {
+	options := runOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	sseChan := make(chan SSEEvent, 64)
 	errChan := make(chan error, 64)
 
@@ -119,21 +124,26 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 		return sseChan, errChan
 	}
 
-	r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
+	r.streamPrediction(ctx, prediction, nil, options, sseChan, errChan)
 
 	return sseChan, errChan
 }
 
-func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (<-chan SSEEvent, <-chan error) {
+func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction, opts ...RunOption) (<-chan SSEEvent, <-chan error) {
+	options := runOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	sseChan := make(chan SSEEvent, 64)
 	errChan := make(chan error, 64)
 
-	r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
+	r.streamPrediction(ctx, prediction, nil, options, sseChan, errChan)
 
 	return sseChan, errChan
 }
 
-func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) {
+func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, options runOptions, sseChan chan SSEEvent, errChan chan error) {
 	url := prediction.URLs["stream"]
 	if url == "" {
 		select {
@@ -244,6 +254,29 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 						continue
 					}
 
+					if options.useFileOutput && event.Type == SSETypeOutput {
+						data, err := convertStringToFileOutput(ctx, event.Data, r)
+						if err != nil {
+							select {
+							case errChan <- err:
+							default:
+							}
+							return
+						}
+
+						if file, ok := data.(*FileOutput); ok {
+							bytes, err := io.ReadAll(file)
+							if err != nil {
+								select {
+								case errChan <- err:
+								default:
+								}
+								return
+							}
+							event.Data = string(bytes)
+						}
+					}
+
 					select {
 					case sseChan <- *event:
 					case <-done:
@@ -267,7 +300,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				// Attempt to reconnect if the connection was closed before the stream was done
-				r.streamPrediction(ctx, prediction, lastEvent, sseChan, errChan)
+				r.streamPrediction(ctx, prediction, lastEvent, options, sseChan, errChan)
 				return
 			}
 
