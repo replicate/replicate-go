@@ -17,7 +17,8 @@ type RunOption func(*runOptions)
 
 // runOptions represents options for running a model
 type runOptions struct {
-	useFileOutput bool
+	useFileOutput  bool
+	blockUntilDone bool
 }
 
 // FileOutput is a custom type that implements io.ReadCloser and includes a URL field
@@ -26,43 +27,73 @@ type FileOutput struct {
 	URL string
 }
 
-// WithFileOutput sets the UseFileOutput option to true
+// WithFileOutput configures the run to automatically convert URLs in output to FileOutput objects
 func WithFileOutput() RunOption {
 	return func(o *runOptions) {
 		o.useFileOutput = true
 	}
 }
 
+// WithBlockUntilDone configures the run to block until the prediction is done
+func WithBlockUntilDone() RunOption {
+	return func(o *runOptions) {
+		o.blockUntilDone = true
+	}
+}
+
 // RunWithOptions runs a model with specified options
 func (r *Client) RunWithOptions(ctx context.Context, identifier string, input PredictionInput, webhook *Webhook, opts ...RunOption) (PredictionOutput, error) {
+	// Initialize options
 	options := runOptions{}
 	for _, opt := range opts {
 		opt(&options)
 	}
 
+	// Parse the identifier to extract version
 	id, err := ParseIdentifier(identifier)
 	if err != nil {
 		return nil, err
 	}
 
+	// Check if version is specified
 	if id.Version == nil {
 		return nil, errors.New("version must be specified")
 	}
 
-	prediction, err := r.CreatePrediction(ctx, *id.Version, input, webhook, false)
+	// Prepare the data for the prediction request
+	data := map[string]interface{}{
+		"version": *id.Version,
+	}
+
+	// Create the prediction request
+	req, err := r.createPredictionRequest(ctx, "/predictions", data, input, webhook, false)
 	if err != nil {
 		return nil, err
 	}
 
+	// Set the X-Sync header if blockUntilDone is true
+	if options.blockUntilDone {
+		req.Header.Set("X-Sync", "true")
+	}
+
+	// Execute the request and obtain the prediction
+	prediction := &Prediction{}
+	if err := r.do(req, prediction); err != nil {
+		return nil, err
+	}
+
+	// Wait for the prediction to complete
 	err = r.Wait(ctx, prediction)
 	if err != nil {
 		return nil, err
 	}
 
+	// Check for model error in the prediction
 	if prediction.Error != nil {
 		return nil, &ModelError{Prediction: prediction}
 	}
 
+	// Transform the output based on the options
 	if options.useFileOutput {
 		return transformOutput(ctx, prediction.Output, r)
 	}
