@@ -62,8 +62,11 @@ webhook := replicate.Webhook{
 	Events: []replicate.WebhookEventType{"start", "completed"},
 }
 
-// Run a model and wait for its output
+// Run a model by version and wait for its output
 output, _ := r8.Run(ctx, fmt.Sprintf("%s:%s", model, version), input, &webhook)
+
+// Run a model and wait for its output
+output, _ := r8.Run(ctx, model, input, &webhook)
 ```
 
 The `Run` method is a convenience method that
