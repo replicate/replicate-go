@@ -71,9 +71,9 @@ func (r *Client) RunWithOptions(ctx context.Context, identifier string, input Pr
 		return nil, err
 	}
 
-	// Set the X-Sync header if blockUntilDone is true
+	// Set the Prefer header if blockUntilDone is true
 	if options.blockUntilDone {
-		req.Header.Set("X-Sync", "true")
+		req.Header.Set("Prefer", "wait")
 	}
 
 	// Execute the request and obtain the prediction
