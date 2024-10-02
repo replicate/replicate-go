@@ -161,12 +161,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 	}
 
 	resp, err := r.c.Do(req)
-	if err != nil || resp == nil {
-		if resp == nil {
-			err = errors.New("received nil response")
-		} else {
-			defer resp.Body.Close()
-		}
+	if err != nil {
 		r.sendError(fmt.Errorf("failed to send request: %w", err), errChan)
 		return
 	}
@@ -258,6 +253,12 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 
 		if err != nil {
 			if errors.Is(err, io.EOF) {
+				select {
+				case <-done:
+					// if we get EOF after receiving "done", we're done
+					return
+				default:
+				}
 				// Attempt to reconnect if the connection was closed before the stream was done
 				r.streamPrediction(ctx, prediction, lastEvent, sseChan, errChan)
 				return
