@@ -82,10 +82,14 @@ func (r *Client) RunWithOptions(ctx context.Context, identifier string, input Pr
 		return nil, err
 	}
 
-	// Wait for the prediction to complete
-	err = r.Wait(ctx, prediction)
-	if err != nil {
-		return nil, err
+	// Check if the prediction is done based on blocking preference and status
+	isDone := options.blockUntilDone && prediction.Status != Starting
+	if !isDone {
+		// Wait for the prediction to complete
+		err = r.Wait(ctx, prediction)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Check for model error in the prediction
