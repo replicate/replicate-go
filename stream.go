@@ -161,12 +161,7 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 	}
 
 	resp, err := r.c.Do(req)
-	if err != nil || resp == nil {
-		if resp == nil {
-			err = errors.New("received nil response")
-		} else {
-			defer resp.Body.Close()
-		}
+	if err != nil {
 		r.sendError(fmt.Errorf("failed to send request: %w", err), errChan)
 		return
 	}
