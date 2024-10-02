@@ -61,7 +61,7 @@ func (r *Client) RunWithOptions(ctx context.Context, identifier string, input Pr
 
 	// Set the model path or version in the data
 	if id.Version == nil {
-		path = "/models/" + id.Owner + "/" + id.Name + "/predictions"
+		path = fmt.Sprintf("/models/%s/%s/predictions", id.Owner, id.Name)
 	} else {
 		data["version"] = *id.Version
 	}
