@@ -55,18 +55,19 @@ func (r *Client) RunWithOptions(ctx context.Context, identifier string, input Pr
 		return nil, err
 	}
 
-	// Check if version is specified
-	if id.Version == nil {
-		return nil, errors.New("version must be specified")
-	}
-
 	// Prepare the data for the prediction request
-	data := map[string]interface{}{
-		"version": *id.Version,
+	data := map[string]interface{}{}
+	path := "/predictions"
+
+	// Set the model path or version in the data
+	if id.Version == nil {
+		path = fmt.Sprintf("/models/%s/%s/predictions", id.Owner, id.Name)
+	} else {
+		data["version"] = *id.Version
 	}
 
 	// Create the prediction request
-	req, err := r.createPredictionRequest(ctx, "/predictions", data, input, webhook, false)
+	req, err := r.createPredictionRequest(ctx, path, data, input, webhook, false)
 	if err != nil {
 		return nil, err
 	}
