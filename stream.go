@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/launchdarkly/eventsource"
+	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -141,9 +143,17 @@ func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (
 	return sseChan, errChan
 }
 
-// func (r *Client) StreamPredictionFiles(ctx context.Context, prediction *Prediction) (<-chan io.Reader, error) {
-// 	go r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
-// }
+func (r *Client) StreamPredictionFiles(ctx context.Context, prediction *Prediction) (<-chan io.ReadCloser, error) {
+	url := prediction.URLs["stream"]
+	if url == "" {
+		return nil, errors.New("streaming not supported or not enabled for this prediction")
+	}
+
+	ch := make(chan io.ReadCloser)
+
+	go r.streamFilesTo(ctx, ch, url, "")
+	return ch, nil
+}
 
 func (r *Client) StreamPredictionText(ctx context.Context, prediction *Prediction) (io.Reader, error) {
 	url := prediction.URLs["stream"]
@@ -205,6 +215,105 @@ func (r *Client) streamTextTo(ctx context.Context, writer *io.PipeWriter, url st
 			// TODO
 		default:
 			writer.CloseWithError(fmt.Errorf("unknown event type %s", event.Event()))
+			return
+		}
+	}
+}
+
+type errorReader struct {
+	err error
+}
+
+var _ io.ReadCloser = &errorReader{}
+
+func errReader(err error) io.ReadCloser {
+	return &errorReader{err: err}
+}
+
+func (e *errorReader) Read(p []byte) (int, error) {
+	return 0, e.err
+}
+
+func (e *errorReader) Close() error {
+	return nil
+}
+
+func (r *Client) streamFilesTo(ctx context.Context, out chan<- io.ReadCloser, url string, lastEventID string) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		out <- errReader(err)
+		close(out)
+		return
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Connection", "keep-alive")
+
+	if lastEventID != "" {
+		req.Header.Set("Last-Event-ID", lastEventID)
+	}
+
+	resp, err := r.c.Do(req)
+	if err != nil {
+		out <- errReader(fmt.Errorf("failed to send request: %w", err))
+		close(out)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		out <- errReader(fmt.Errorf("received invalid status code: %d", resp.StatusCode))
+		close(out)
+		return
+	}
+	defer resp.Body.Close()
+	decoder := eventsource.NewDecoder(resp.Body)
+	for {
+		event, err := decoder.Decode()
+		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				// retry (TODO: backoff policy?)
+				r.streamFilesTo(ctx, out, url, lastEventID)
+				return
+			}
+			out <- errReader(fmt.Errorf("Failed to get token: %w", err))
+			close(out)
+			return
+		}
+		lastEventID = event.Id()
+		switch event.Event() {
+		case SSETypeOutput:
+			if strings.HasPrefix(event.Data(), "data:") {
+				data, err := dataurl.DecodeString(event.Data())
+
+				if err != nil {
+					out <- errReader(err)
+					close(out)
+					return
+				}
+
+				out <- io.NopCloser(bytes.NewReader(data.Data))
+			} else if strings.HasPrefix(event.Data(), "http") {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, event.Data(), nil)
+				if err != nil {
+					out <- errReader(err)
+					close(out)
+					return
+				}
+				resp, err := r.c.Do(req)
+				if err != nil {
+					out <- errReader(err)
+					close(out)
+					return
+				}
+				out <- resp.Body
+			}
+		case SSETypeDone:
+			close(out)
+			return
+		case SSETypeLogs:
+			// TODO
+		default:
+			out <- errReader(fmt.Errorf("unknown event type %s", event.Event()))
 			return
 		}
 	}
