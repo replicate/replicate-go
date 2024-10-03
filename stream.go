@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"unicode/utf8"
 
+	"github.com/launchdarkly/eventsource"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -138,6 +139,74 @@ func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (
 	r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
 
 	return sseChan, errChan
+}
+
+// func (r *Client) StreamPredictionFiles(ctx context.Context, prediction *Prediction) (<-chan io.Reader, error) {
+// 	go r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
+// }
+
+func (r *Client) StreamPredictionText(ctx context.Context, prediction *Prediction) (io.Reader, error) {
+	url := prediction.URLs["stream"]
+	if url == "" {
+		return nil, errors.New("streaming not supported or not enabled for this prediction")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Connection", "keep-alive")
+
+	// if lastEvent != nil {
+	// 	req.Header.Set("Last-Event-ID", lastEvent.ID)
+	// }
+
+	resp, err := r.c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("received invalid status code: %d", resp.StatusCode)
+	}
+
+	reader, writer := io.Pipe()
+
+	go r.decodeTextTo(ctx, writer, resp.Body)
+	return reader, nil
+}
+
+func (r *Client) decodeTextTo(ctx context.Context, writer *io.PipeWriter, body io.ReadCloser) {
+	decoder := eventsource.NewDecoder(body)
+	defer body.Close()
+	for {
+		select {
+		case <-ctx.Done():
+			writer.CloseWithError(ctx.Err())
+		default:
+		}
+
+		event, err := decoder.Decode()
+		if err != nil {
+			// TODO retries / reconnects
+			writer.CloseWithError(fmt.Errorf("Failed to get token: %w", err))
+			return
+		}
+		switch event.Event() {
+		case SSETypeOutput:
+			io.WriteString(writer, event.Data())
+		case SSETypeDone:
+			writer.Close()
+			return
+		case SSETypeLogs:
+			// TODO
+		default:
+			writer.CloseWithError(fmt.Errorf("unknown event type %s", event.Event()))
+			return
+		}
+	}
+
 }
 
 func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) {
