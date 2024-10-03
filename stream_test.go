@@ -50,6 +50,7 @@ func TestStreamTextWithRetries(t *testing.T) {
 	request := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if request == 0 {
+			// first request: we return the first event
 			fmt.Fprint(w, `event: output
 data: foo
 id: 1
@@ -57,6 +58,16 @@ id: 1
 `)
 			request++
 			return
+		}
+
+		// subsequent requests: we return the full stream, respecting Last-Event-ID
+		if r.Header.Get("Last-Event-ID") != "1" {
+			fmt.Fprint(w, `event: output
+data: foo
+id: 1
+
+`)
+
 		}
 		fmt.Fprint(w, `event: output
 data: bar

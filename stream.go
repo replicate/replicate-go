@@ -150,49 +150,51 @@ func (r *Client) StreamPredictionText(ctx context.Context, prediction *Predictio
 	if url == "" {
 		return nil, errors.New("streaming not supported or not enabled for this prediction")
 	}
+
+	reader, writer := io.Pipe()
+
+	go r.streamTextTo(ctx, writer, url, "")
+	return reader, nil
+}
+
+func (r *Client) streamTextTo(ctx context.Context, writer *io.PipeWriter, url string, lastEventID string) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		writer.CloseWithError(fmt.Errorf("failed to create request: %w", err))
+		return
 	}
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("Connection", "keep-alive")
 
-	// if lastEvent != nil {
-	// 	req.Header.Set("Last-Event-ID", lastEvent.ID)
-	// }
+	if lastEventID != "" {
+		req.Header.Set("Last-Event-ID", lastEventID)
+	}
 
 	resp, err := r.c.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
+		writer.CloseWithError(fmt.Errorf("failed to send request: %w", err))
+		return
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("received invalid status code: %d", resp.StatusCode)
+		writer.CloseWithError(fmt.Errorf("received invalid status code: %d", resp.StatusCode))
+		return
 	}
-
-	reader, writer := io.Pipe()
-
-	go r.decodeTextTo(ctx, writer, resp.Body)
-	return reader, nil
-}
-
-func (r *Client) decodeTextTo(ctx context.Context, writer *io.PipeWriter, body io.ReadCloser) {
-	decoder := eventsource.NewDecoder(body)
-	defer body.Close()
+	defer resp.Body.Close()
+	decoder := eventsource.NewDecoder(resp.Body)
 	for {
-		select {
-		case <-ctx.Done():
-			writer.CloseWithError(ctx.Err())
-		default:
-		}
-
 		event, err := decoder.Decode()
 		if err != nil {
-			// TODO retries / reconnects
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				// retry (TODO: backoff policy?)
+				r.streamTextTo(ctx, writer, url, lastEventID)
+				return
+			}
 			writer.CloseWithError(fmt.Errorf("Failed to get token: %w", err))
 			return
 		}
+		lastEventID = event.Id()
 		switch event.Event() {
 		case SSETypeOutput:
 			io.WriteString(writer, event.Data())
