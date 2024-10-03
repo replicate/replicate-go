@@ -6,11 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"unicode/utf8"
-
-	"golang.org/x/sync/errgroup"
+	"strings"
 )
 
 var (
@@ -42,31 +39,31 @@ type SSEEvent struct {
 }
 
 // decodeSSEEvent parses the raw SSE event data and returns an SSEEvent pointer and an error.
-func decodeSSEEvent(b []byte) (*SSEEvent, error) {
-	chunks := [][]byte{}
+func decodeSSEEvent(b string) (*SSEEvent, error) {
+	chunks := []string{}
 	e := &SSEEvent{Type: SSETypeDefault}
 
-	for _, line := range bytes.Split(b, []byte("\n")) {
+	for _, line := range strings.Split(b, "\n") {
 		// Parse field and value from line
-		parts := bytes.SplitN(line, []byte{':'}, 2)
+		parts := strings.SplitN(line, ":", 2)
 
 		field := ""
 		if len(parts) > 0 {
-			field = string(parts[0])
+			field = parts[0]
 		}
 
-		var value []byte
+		var value string
 		if len(parts) == 2 {
 			value = parts[1]
 			// Trim leading space if present
-			value = bytes.TrimPrefix(value, []byte(" "))
+			value = strings.TrimLeft(value, " ")
 		}
 
 		switch field {
 		case "id":
-			e.ID = string(value)
+			e.ID = value
 		case "event":
-			e.Type = string(value)
+			e.Type = value
 		case "data":
 			chunks = append(chunks, value)
 		default:
@@ -74,11 +71,7 @@ func decodeSSEEvent(b []byte) (*SSEEvent, error) {
 		}
 	}
 
-	data := bytes.Join(chunks, []byte("\n"))
-	if !utf8.Valid(data) {
-		return nil, ErrInvalidUTF8Data
-	}
-	e.Data = string(data)
+	e.Data = strings.Join(chunks, "\n")
 
 	// Return nil if event data is empty and event type is not "done"
 	if e.Data == "" && e.Type != SSETypeDone {
@@ -126,7 +119,7 @@ func (r *Client) Stream(ctx context.Context, identifier string, input Prediction
 		return sseChan, errChan
 	}
 
-	r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
+	go r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
 
 	return sseChan, errChan
 }
@@ -135,9 +128,25 @@ func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (
 	sseChan := make(chan SSEEvent, 64)
 	errChan := make(chan error, 64)
 
-	r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
+	go r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
 
 	return sseChan, errChan
+}
+
+func scanEvents(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.Index(data, []byte{'\n', '\n'}); i >= 0 {
+		// We have a full \n\n-terminated event.
+		return i + 2, data[0:i], nil
+	}
+	// If we're at EOF, we have a final, non-terminated event. Return it.
+	if atEOF {
+		return len(data), data, nil
+	}
+	// Request more data.
+	return 0, nil, nil
 }
 
 func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) {
@@ -165,111 +174,54 @@ func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, l
 		r.sendError(fmt.Errorf("failed to send request: %w", err), errChan)
 		return
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		r.sendError(fmt.Errorf("received invalid status code: %d", resp.StatusCode), errChan)
 		return
 	}
 
-	reader := bufio.NewReader(resp.Body)
-	var buf bytes.Buffer
-	lineChan := make(chan []byte)
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Split(scanEvents)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
 
-	g, ctx := errgroup.WithContext(ctx)
-	done := make(chan struct{})
+	done := false
 
-	g.Go(func() error {
-		defer close(lineChan)
-		defer resp.Body.Close()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-done:
-				return nil
-			default:
-				line, err := reader.ReadBytes('\n')
-				if err != nil {
-					return err
-				}
-				select {
-				case lineChan <- line:
-				case <-ctx.Done():
-					return ctx.Err()
-				}
-			}
-		}
-	})
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-done:
-				return
-			case b, ok := <-lineChan:
-				if !ok {
-					return
-				}
-
-				buf.Write(b)
-
-				if bytes.Equal(b, []byte("\n")) {
-					b := buf.Bytes()
-					buf.Reset()
-
-					event, err := decodeSSEEvent(b)
-					if err != nil {
-						r.sendError(err, errChan)
-						continue
-					}
-
-					if event == nil {
-						// Skip empty events
-						continue
-					}
-
-					select {
-					case sseChan <- *event:
-					case <-done:
-						return
-					case <-ctx.Done():
-						return
-					}
-
-					if event.Type == SSETypeDone {
-						close(done)
-						return
-					}
-				}
-			}
-		}
-	}()
-
-	go func() {
-		err := g.Wait()
-
+	for scanner.Scan() {
+		event, err := decodeSSEEvent(scanner.Text())
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				select {
-				case <-done:
-					// if we get EOF after receiving "done", we're done
-					return
-				default:
-				}
-				// Attempt to reconnect if the connection was closed before the stream was done
-				r.streamPrediction(ctx, prediction, lastEvent, sseChan, errChan)
-				return
-			}
-
-			if !errors.Is(err, context.Canceled) {
-				r.sendError(err, errChan)
-			}
+			r.sendError(err, errChan)
+			continue
 		}
 
-		close(sseChan)
-		close(errChan)
-	}()
+		if event == nil {
+			// Skip empty events
+			continue
+		}
+		lastEvent = event
+
+		select {
+		case sseChan <- *event:
+		case <-ctx.Done():
+			return
+		}
+
+		if event.Type == SSETypeDone {
+			done = true
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		if !errors.Is(err, context.Canceled) {
+			r.sendError(err, errChan)
+		}
+	}
+	if !done {
+		// retry
+		r.streamPrediction(ctx, prediction, lastEvent, sseChan, errChan)
+		return
+	}
+
+	close(sseChan)
+	close(errChan)
 }
