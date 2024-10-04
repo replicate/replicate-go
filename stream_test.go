@@ -39,10 +39,10 @@ event: done
 
 	r, err := c.StreamPredictionText(ctx, p)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	text, err := io.ReadAll(r)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "foo", string(text))
 }
 
