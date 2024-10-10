@@ -8,8 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"time"
 	"unicode/utf8"
 
+	"github.com/launchdarkly/eventsource"
+	"github.com/replicate/replicate-go/streaming"
+	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -138,6 +143,181 @@ func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (
 	r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
 
 	return sseChan, errChan
+}
+
+func (r *Client) StreamPredictionFiles(ctx context.Context, prediction *Prediction) (<-chan streaming.File, error) {
+	url := prediction.URLs["stream"]
+	if url == "" {
+		return nil, errors.New("streaming not supported or not enabled for this prediction")
+	}
+
+	ch := make(chan streaming.File)
+
+	go r.streamFilesTo(ctx, ch, url, "")
+	return ch, nil
+}
+
+func (r *Client) StreamPredictionText(ctx context.Context, prediction *Prediction) (io.Reader, error) {
+	url := prediction.URLs["stream"]
+	if url == "" {
+		return nil, errors.New("streaming not supported or not enabled for this prediction")
+	}
+
+	reader, writer := io.Pipe()
+
+	go r.streamTextTo(ctx, writer, url, "")
+	return reader, nil
+}
+
+func (r *Client) streamTextTo(ctx context.Context, writer *io.PipeWriter, url string, lastEventID string) {
+	defer writer.Close()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ch := make(chan event)
+	go r.streamEventsTo(ctx, ch, url, lastEventID)
+
+	for e := range ch {
+		_, err := io.WriteString(writer, e.rawData)
+		if err != nil {
+			writer.CloseWithError(err)
+			return
+		}
+	}
+}
+
+type dataURL struct {
+	url string
+}
+
+var _ streaming.File = &dataURL{}
+
+func (d *dataURL) Body(_ context.Context) (io.ReadCloser, error) {
+	data, err := dataurl.DecodeString(d.url)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return io.NopCloser(bytes.NewReader(data.Data)), nil
+}
+
+type httpURL struct {
+	c   *http.Client
+	url string
+}
+
+var _ streaming.File = &httpURL{}
+
+func (h *httpURL) Body(ctx context.Context) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := h.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
+type errWrapper struct {
+	err error
+}
+
+var _ streaming.File = &errWrapper{}
+
+func fileError(err error) streaming.File {
+	return &errWrapper{err: err}
+}
+
+func (e *errWrapper) Body(_ context.Context) (io.ReadCloser, error) {
+	return nil, e.err
+}
+
+func (e *errWrapper) Close() error {
+	return nil
+}
+
+func (r *Client) streamFilesTo(ctx context.Context, out chan<- streaming.File, url string, lastEventID string) {
+	defer close(out)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	ch := make(chan event)
+	go r.streamEventsTo(ctx, ch, url, lastEventID)
+
+	for e := range ch {
+		switch {
+		case strings.HasPrefix(e.rawData, "data:"):
+			out <- &dataURL{url: e.rawData}
+		case strings.HasPrefix(e.rawData, "http"):
+			out <- &httpURL{c: r.c, url: e.rawData}
+		default:
+			out <- fileError(fmt.Errorf("Could not parse URL: %s", e.rawData))
+			return
+		}
+	}
+}
+
+type event struct {
+	rawData string
+	err     error
+}
+
+func (r *Client) streamEventsTo(ctx context.Context, out chan<- event, url string, lastEventID string) {
+	defer close(out)
+ATTEMPT:
+	for attempt := 0; attempt <= r.options.retryPolicy.maxRetries; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			out <- event{err: err}
+			return
+		}
+		req.Header.Set("Accept", "text/event-stream")
+
+		if lastEventID != "" {
+			req.Header.Set("Last-Event-ID", lastEventID)
+		}
+
+		resp, err := r.c.Do(req)
+		if err != nil {
+			out <- event{err: fmt.Errorf("failed to send request: %w", err)}
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			out <- event{err: fmt.Errorf("received invalid status code: %d", resp.StatusCode)}
+			return
+		}
+		defer resp.Body.Close()
+		decoder := eventsource.NewDecoder(resp.Body)
+		for {
+			e, err := decoder.Decode()
+			if err != nil {
+				if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+					// retry
+					delay := r.options.retryPolicy.backoff.NextDelay(attempt)
+					time.Sleep(delay)
+					continue ATTEMPT
+				}
+				out <- event{err: fmt.Errorf("failed to get token: %w", err)}
+				return
+			}
+			lastEventID = e.Id()
+			switch e.Event() {
+			case SSETypeOutput:
+				out <- event{rawData: e.Data()}
+			case SSETypeDone:
+				return
+			case SSETypeLogs:
+				// TODO
+			default:
+				out <- event{err: fmt.Errorf("unknown event type %s", e.Event())}
+				return
+			}
+		}
+	}
 }
 
 func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) {
