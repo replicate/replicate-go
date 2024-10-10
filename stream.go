@@ -175,8 +175,6 @@ func (r *Client) streamTextTo(ctx context.Context, writer *io.PipeWriter, url st
 		return
 	}
 	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("Connection", "keep-alive")
 
 	if lastEventID != "" {
 		req.Header.Set("Last-Event-ID", lastEventID)
@@ -282,8 +280,6 @@ func (r *Client) streamFilesTo(ctx context.Context, out chan<- streaming.File, u
 		return
 	}
 	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("Connection", "keep-alive")
 
 	if lastEventID != "" {
 		req.Header.Set("Last-Event-ID", lastEventID)
