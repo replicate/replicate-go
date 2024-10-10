@@ -239,8 +239,6 @@ func (e *errWrapper) Close() error {
 	return nil
 }
 
-const maxRetries = 3
-
 func (r *Client) streamFilesTo(ctx context.Context, out chan<- streaming.File, url string, lastEventID string) {
 	defer close(out)
 	ctx, cancel := context.WithCancel(ctx)
@@ -250,11 +248,12 @@ func (r *Client) streamFilesTo(ctx context.Context, out chan<- streaming.File, u
 	go r.streamEventsTo(ctx, ch, url, lastEventID)
 
 	for e := range ch {
-		if strings.HasPrefix(e.rawData, "data:") {
+		switch {
+		case strings.HasPrefix(e.rawData, "data:"):
 			out <- &dataURL{url: e.rawData}
-		} else if strings.HasPrefix(e.rawData, "http") {
+		case strings.HasPrefix(e.rawData, "http"):
 			out <- &httpURL{c: r.c, url: e.rawData}
-		} else {
+		default:
 			out <- fileError(fmt.Errorf("Could not parse URL: %s", e.rawData))
 			return
 		}
@@ -297,7 +296,7 @@ ATTEMPT:
 			e, err := decoder.Decode()
 			if err != nil {
 				if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-					//retry
+					// retry
 					delay := r.options.retryPolicy.backoff.NextDelay(attempt)
 					time.Sleep(delay)
 					continue ATTEMPT
