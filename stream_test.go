@@ -140,40 +140,46 @@ event: done
 
 	assert.NoError(t, err)
 
-	var f1, f2, f3 io.Reader
+	var body io.Reader
 	// first file is a data URI
 	select {
-	case f1 = <-files:
-		require.NotNil(t, f1)
+	case file := <-files:
+		require.NotNil(t, file)
+		body, err = file.Body(ctx)
+		require.NoError(t, err)
 	case <-time.After(time.Second):
 		assert.Fail(t, "Timed out waiting for file")
 		return
 	}
-	content1, err := io.ReadAll(f1)
+	content1, err := io.ReadAll(body)
 	assert.NoError(t, err)
 	assert.Equal(t, "banana", string(content1))
 
 	// second file is a base64'd data URI
 	select {
-	case f2 = <-files:
-		require.NotNil(t, f2)
+	case file := <-files:
+		require.NotNil(t, file)
+		body, err = file.Body(ctx)
+		require.NoError(t, err)
 	case <-time.After(time.Second):
 		assert.Fail(t, "Timed out waiting for file")
 		return
 	}
-	content2, err := io.ReadAll(f2)
+	content2, err := io.ReadAll(body)
 	assert.NoError(t, err)
 	assert.Equal(t, "apple", string(content2))
 
 	// third file is an http URI
 	select {
-	case f3 = <-files:
-		require.NotNil(t, f3)
+	case file := <-files:
+		require.NotNil(t, file)
+		body, err = file.Body(ctx)
+		require.NoError(t, err)
 	case <-time.After(time.Second):
 		assert.Fail(t, "Timed out waiting for file")
 		return
 	}
-	content3, err := io.ReadAll(f3)
+	content3, err := io.ReadAll(body)
 	assert.NoError(t, err)
 	assert.Equal(t, "mango\n", string(content3))
 }
