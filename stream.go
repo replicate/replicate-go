@@ -307,7 +307,7 @@ func (r *Client) streamFilesTo(ctx context.Context, out chan<- streaming.File, u
 				r.streamFilesTo(ctx, out, url, lastEventID)
 				return
 			}
-			out <- fileError(fmt.Errorf("Failed to get token: %w", err))
+			out <- fileError(fmt.Errorf("failed to get token: %w", err))
 			close(out)
 			return
 		}
