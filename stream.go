@@ -206,7 +206,11 @@ func (r *Client) streamTextTo(ctx context.Context, writer *io.PipeWriter, url st
 		lastEventID = event.Id()
 		switch event.Event() {
 		case SSETypeOutput:
-			io.WriteString(writer, event.Data())
+			_, err := io.WriteString(writer, event.Data())
+			if err != nil {
+				writer.CloseWithError(err)
+				return
+			}
 		case SSETypeDone:
 			writer.Close()
 			return
