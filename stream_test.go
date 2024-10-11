@@ -9,9 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/replicate/replicate-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/replicate/replicate-go"
 )
 
 func TestStreamText(t *testing.T) {

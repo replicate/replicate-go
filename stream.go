@@ -12,10 +12,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/replicate/replicate-go/internal/sse"
-	"github.com/replicate/replicate-go/streaming"
 	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/replicate/replicate-go/internal/sse"
+	"github.com/replicate/replicate-go/streaming"
 )
 
 var (

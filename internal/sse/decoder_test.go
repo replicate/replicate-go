@@ -6,9 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/replicate/replicate-go/internal/sse"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/replicate/replicate-go/internal/sse"
 )
 
 func TestDecodeOneEventNoSpace(t *testing.T) {
