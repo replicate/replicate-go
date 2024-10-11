@@ -47,6 +47,41 @@ event: done
 	assert.Equal(t, "foo", string(text))
 }
 
+func TestStreamTextWithComment(t *testing.T) {
+	// nchan seems to put a `: hi` empty event at the start of each stream.
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `: hi
+
+event: output
+data: foo
+
+event: done
+
+`)
+	}))
+	defer ts.Close()
+
+	p := &replicate.Prediction{
+		URLs: map[string]string{
+			"stream": ts.URL,
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	c, err := replicate.NewClient(replicate.WithToken("test-token"))
+	require.NoError(t, err)
+
+	r, err := c.StreamPredictionText(ctx, p)
+
+	require.NoError(t, err)
+
+	text, err := io.ReadAll(r)
+	require.NoError(t, err)
+	assert.Equal(t, "foo", string(text))
+}
+
 func TestStreamTextWithRetries(t *testing.T) {
 	request := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

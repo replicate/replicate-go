@@ -158,33 +158,75 @@ func (r *Client) StreamPredictionFiles(ctx context.Context, prediction *Predicti
 	return ch, nil
 }
 
-func (r *Client) StreamPredictionText(ctx context.Context, prediction *Prediction) (io.Reader, error) {
+type textStreamer struct {
+	s            *sse.Streamer
+	ctx          context.Context
+	currentEvent io.Reader
+	done         bool
+}
+
+func (t *textStreamer) Read(buf []byte) (int, error) {
+	if t.done {
+		return 0, io.EOF
+	}
+	for {
+		if t.currentEvent == nil {
+			e, err := t.s.NextEvent(t.ctx)
+			if err != nil {
+				return 0, err
+			}
+			switch e.Type {
+			case "":
+				// empty message, ignore
+				// nchan starts streams with a blank `: hi` message
+				continue
+			case SSETypeDone:
+				t.done = true
+				return 0, io.EOF
+			case SSETypeError:
+				return 0, fmt.Errorf("Error event: %s", e.Data)
+			case SSETypeOutput:
+				t.currentEvent = strings.NewReader(strings.TrimSuffix(e.Data, "\n"))
+			default:
+				return 0, fmt.Errorf("unexpected type %s, %+v", e.Type, e)
+			}
+		}
+
+		n, err := t.currentEvent.Read(buf)
+
+		if err != nil && err != io.EOF {
+			return n, err
+		}
+
+		if err == io.EOF {
+			t.currentEvent = nil
+			if n > 0 {
+				return n, nil
+			}
+			// we haven't got any data, try to fetch the next event
+			continue
+		}
+
+		return n, nil
+	}
+}
+
+func (t *textStreamer) Close() error {
+	return t.s.Close()
+}
+
+// StreamPredictionText streams prediction text output via the replicate
+// streaming api.  It is the caller's responsibility to close the returned
+// io.ReadCloser to ensure connections and associated resources are cleaned up
+// appropriately.
+func (r *Client) StreamPredictionText(ctx context.Context, prediction *Prediction) (io.ReadCloser, error) {
 	url := prediction.URLs["stream"]
 	if url == "" {
 		return nil, errors.New("streaming not supported or not enabled for this prediction")
 	}
+	s := sse.NewStreamer(r.c, url, r.options.retryPolicy.maxRetries, r.options.retryPolicy.backoff)
 
-	reader, writer := io.Pipe()
-
-	go r.streamTextTo(ctx, writer, url, "")
-	return reader, nil
-}
-
-func (r *Client) streamTextTo(ctx context.Context, writer *io.PipeWriter, url string, lastEventID string) {
-	defer writer.Close()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	ch := make(chan event)
-	go r.streamEventsTo(ctx, ch, url, lastEventID)
-
-	for e := range ch {
-		_, err := io.WriteString(writer, strings.TrimSuffix(e.rawData, "\n"))
-		if err != nil {
-			writer.CloseWithError(err)
-			return
-		}
-	}
+	return &textStreamer{s: s, ctx: ctx}, nil
 }
 
 type dataURL struct {
