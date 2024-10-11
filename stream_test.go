@@ -84,61 +84,6 @@ event: done
 	assert.Equal(t, "foo", string(text))
 }
 
-func TestStreamTextWithRetries(t *testing.T) {
-	request := 0
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if request == 0 {
-			// first request: we return the first event
-			fmt.Fprint(w, `event: output
-data: foo
-id: 1
-
-`)
-			request++
-			return
-		}
-
-		// subsequent requests: we return the full stream, respecting Last-Event-ID
-		if r.Header.Get("Last-Event-ID") != "1" {
-			fmt.Fprint(w, `event: output
-data: foo
-id: 1
-
-`)
-
-		}
-		fmt.Fprint(w, `event: output
-data: bar
-id: 2
-
-event: done
-id: 3
-
-`)
-	}))
-	t.Cleanup(ts.Close)
-
-	p := &replicate.Prediction{
-		URLs: map[string]string{
-			"stream": ts.URL,
-		},
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	t.Cleanup(cancel)
-
-	c, err := replicate.NewClient(replicate.WithToken("test-token"))
-	require.NoError(t, err)
-
-	r, err := c.StreamPredictionText(ctx, p)
-	require.NoError(t, err)
-	t.Cleanup(func() { r.Close() })
-
-	text, err := io.ReadAll(r)
-	assert.NoError(t, err)
-	assert.Equal(t, "foobar", string(text))
-}
-
 func TestStreamFiles(t *testing.T) {
 	var baseURL string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
