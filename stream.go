@@ -8,9 +8,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"unicode/utf8"
 
+	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/replicate/replicate-go/internal/sse"
+	"github.com/replicate/replicate-go/streaming"
 )
 
 var (
@@ -138,6 +143,173 @@ func (r *Client) StreamPrediction(ctx context.Context, prediction *Prediction) (
 	r.streamPrediction(ctx, prediction, nil, sseChan, errChan)
 
 	return sseChan, errChan
+}
+
+type textStreamer struct {
+	s            *sse.Streamer
+	ctx          context.Context
+	currentEvent io.Reader
+	done         bool
+}
+
+func (t *textStreamer) Read(buf []byte) (int, error) {
+	if t.done {
+		return 0, io.EOF
+	}
+	for {
+		if t.currentEvent == nil {
+			e, err := t.s.NextEvent(t.ctx)
+			if err != nil {
+				return 0, err
+			}
+			switch e.Type {
+			case "":
+				// empty message, ignore
+				// nchan starts streams with a blank `: hi` message
+				continue
+			case SSETypeDone:
+				t.done = true
+				return 0, io.EOF
+			case SSETypeError:
+				return 0, fmt.Errorf("Error event: %s", e.Data)
+			case SSETypeOutput:
+				t.currentEvent = strings.NewReader(strings.TrimSuffix(e.Data, "\n"))
+			default:
+				return 0, fmt.Errorf("unexpected type %s, %+v", e.Type, e)
+			}
+		}
+
+		n, err := t.currentEvent.Read(buf)
+
+		if err != nil && err != io.EOF {
+			return n, err
+		}
+
+		if err == io.EOF {
+			t.currentEvent = nil
+			if n > 0 {
+				return n, nil
+			}
+			// we haven't got any data, try to fetch the next event
+			continue
+		}
+
+		return n, nil
+	}
+}
+
+func (t *textStreamer) Close() error {
+	return t.s.Close()
+}
+
+// StreamPredictionText streams prediction text output via the replicate
+// streaming api.  It is the caller's responsibility to close the returned
+// io.ReadCloser to ensure connections and associated resources are cleaned up
+// appropriately.
+func (r *Client) StreamPredictionText(ctx context.Context, prediction *Prediction) (io.ReadCloser, error) {
+	url := prediction.URLs["stream"]
+	if url == "" {
+		return nil, errors.New("streaming not supported or not enabled for this prediction")
+	}
+	s := sse.NewStreamer(r.c, url, r.options.retryPolicy.maxRetries, r.options.retryPolicy.backoff)
+
+	return &textStreamer{s: s, ctx: ctx}, nil
+}
+
+type dataURL struct {
+	url string
+}
+
+var _ streaming.File = &dataURL{}
+
+func (d *dataURL) Body(_ context.Context) (io.ReadCloser, error) {
+	data, err := dataurl.DecodeString(d.url)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return io.NopCloser(bytes.NewReader(data.Data)), nil
+}
+
+type httpURL struct {
+	c   *http.Client
+	url string
+}
+
+var _ streaming.File = &httpURL{}
+
+func (h *httpURL) Body(ctx context.Context) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := h.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
+type fileStreamer struct {
+	s    *sse.Streamer
+	c    *http.Client
+	done bool
+}
+
+func (f *fileStreamer) NextFile(ctx context.Context) (streaming.File, error) {
+	if f.done {
+		return nil, io.EOF
+	}
+	for {
+		var url string
+		e, err := f.s.NextEvent(ctx)
+		if err != nil {
+			return nil, err
+		}
+		switch e.Type {
+		case "":
+			// empty message, ignore
+			// nchan starts streams with a blank `: hi` message
+			continue
+		case SSETypeDone:
+			f.done = true
+			return nil, io.EOF
+		case SSETypeError:
+			return nil, fmt.Errorf("Error event: %s", e.Data)
+		case SSETypeOutput:
+			url = strings.TrimSuffix(e.Data, "\n")
+		default:
+			return nil, fmt.Errorf("unexpected type %s, %+v", e.Type, e)
+		}
+
+		switch {
+		case strings.HasPrefix(url, "data:"):
+			return &dataURL{url: url}, nil
+		case strings.HasPrefix(url, "http"):
+			return &httpURL{c: f.c, url: url}, nil
+		default:
+			return nil, fmt.Errorf("Could not parse URL: %s", url)
+		}
+	}
+}
+
+func (f *fileStreamer) Close() error {
+	return f.s.Close()
+}
+
+// StreamPredictionFiles streams prediction file output via the replicate
+// streaming api.  It is the caller's responsibility to close the returned
+// FileStreamer to ensure connections and associated resources are cleaned up
+// appropriately.
+func (r *Client) StreamPredictionFiles(prediction *Prediction) (streaming.FileStreamer, error) {
+	url := prediction.URLs["stream"]
+	if url == "" {
+		return nil, errors.New("streaming not supported or not enabled for this prediction")
+	}
+
+	s := sse.NewStreamer(r.c, url, r.options.retryPolicy.maxRetries, r.options.retryPolicy.backoff)
+	return &fileStreamer{s: s, c: r.c}, nil
 }
 
 func (r *Client) streamPrediction(ctx context.Context, prediction *Prediction, lastEvent *SSEEvent, sseChan chan SSEEvent, errChan chan error) {

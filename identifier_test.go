@@ -3,8 +3,9 @@ package replicate_test
 import (
 	"testing"
 
-	"github.com/replicate/replicate-go"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/replicate/replicate-go"
 )
 
 func TestValidWithVersion(t *testing.T) {
