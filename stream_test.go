@@ -24,7 +24,7 @@ event: done
 
 `)
 	}))
-	defer ts.Close()
+	t.Cleanup(ts.Close)
 
 	p := &replicate.Prediction{
 		URLs: map[string]string{
@@ -33,12 +33,13 @@ event: done
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	t.Cleanup(cancel)
 
 	c, err := replicate.NewClient(replicate.WithToken("test-token"))
 	require.NoError(t, err)
 
 	r, err := c.StreamPredictionText(ctx, p)
+	t.Cleanup(func() { r.Close() })
 
 	require.NoError(t, err)
 
@@ -59,7 +60,7 @@ event: done
 
 `)
 	}))
-	defer ts.Close()
+	t.Cleanup(ts.Close)
 
 	p := &replicate.Prediction{
 		URLs: map[string]string{
@@ -68,12 +69,13 @@ event: done
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	t.Cleanup(cancel)
 
 	c, err := replicate.NewClient(replicate.WithToken("test-token"))
 	require.NoError(t, err)
 
 	r, err := c.StreamPredictionText(ctx, p)
+	t.Cleanup(func() { r.Close() })
 
 	require.NoError(t, err)
 
@@ -114,7 +116,7 @@ id: 3
 
 `)
 	}))
-	defer ts.Close()
+	t.Cleanup(ts.Close)
 
 	p := &replicate.Prediction{
 		URLs: map[string]string{
@@ -123,14 +125,14 @@ id: 3
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	t.Cleanup(cancel)
 
 	c, err := replicate.NewClient(replicate.WithToken("test-token"))
 	require.NoError(t, err)
 
 	r, err := c.StreamPredictionText(ctx, p)
-
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	t.Cleanup(func() { r.Close() })
 
 	text, err := io.ReadAll(r)
 	assert.NoError(t, err)
@@ -157,7 +159,7 @@ event: done
 
 `)
 	}))
-	defer ts.Close()
+	t.Cleanup(ts.Close)
 	baseURL = ts.URL
 
 	p := &replicate.Prediction{
@@ -167,55 +169,39 @@ event: done
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	t.Cleanup(cancel)
 
 	c, err := replicate.NewClient(replicate.WithToken("test-token"))
 	require.NoError(t, err)
 
 	files, err := c.StreamPredictionFiles(ctx, p)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	var body io.Reader
 	// first file is a data URI
-	select {
-	case file := <-files:
-		require.NotNil(t, file)
-		body, err = file.Body(ctx)
-		require.NoError(t, err)
-	case <-time.After(time.Second):
-		assert.Fail(t, "Timed out waiting for file")
-		return
-	}
+	file, err := files.NextFile(ctx)
+	require.NoError(t, err)
+	body, err := file.Body(ctx)
+	require.NoError(t, err)
 	content1, err := io.ReadAll(body)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "banana", string(content1))
 
 	// second file is a base64'd data URI
-	select {
-	case file := <-files:
-		require.NotNil(t, file)
-		body, err = file.Body(ctx)
-		require.NoError(t, err)
-	case <-time.After(time.Second):
-		assert.Fail(t, "Timed out waiting for file")
-		return
-	}
+	file, err = files.NextFile(ctx)
+	require.NoError(t, err)
+	body, err = file.Body(ctx)
+	require.NoError(t, err)
 	content2, err := io.ReadAll(body)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "apple", string(content2))
 
 	// third file is an http URI
-	select {
-	case file := <-files:
-		require.NotNil(t, file)
-		body, err = file.Body(ctx)
-		require.NoError(t, err)
-	case <-time.After(time.Second):
-		assert.Fail(t, "Timed out waiting for file")
-		return
-	}
+	file, err = files.NextFile(ctx)
+	require.NoError(t, err)
+	body, err = file.Body(ctx)
+	require.NoError(t, err)
 	content3, err := io.ReadAll(body)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "mango\n", string(content3))
 }
