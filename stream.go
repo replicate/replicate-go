@@ -250,11 +250,20 @@ func (r *Client) streamFilesTo(ctx context.Context, out chan<- streaming.File, u
 	for e := range ch {
 		switch {
 		case strings.HasPrefix(e.rawData, "data:"):
-			out <- &dataURL{url: e.rawData}
+			select {
+			case <-ctx.Done():
+			case out <- &dataURL{url: e.rawData}:
+			}
 		case strings.HasPrefix(e.rawData, "http"):
-			out <- &httpURL{c: r.c, url: e.rawData}
+			select {
+			case <-ctx.Done():
+			case out <- &httpURL{c: r.c, url: e.rawData}:
+			}
 		default:
-			out <- fileError(fmt.Errorf("Could not parse URL: %s", e.rawData))
+			select {
+			case <-ctx.Done():
+			case out <- fileError(fmt.Errorf("Could not parse URL: %s", e.rawData)):
+			}
 			return
 		}
 	}
@@ -282,7 +291,10 @@ ATTEMPT:
 
 		resp, err := r.c.Do(req)
 		if err != nil {
-			out <- event{err: fmt.Errorf("failed to send request: %w", err)}
+			select {
+			case <-ctx.Done():
+			case out <- event{err: fmt.Errorf("failed to send request: %w", err)}:
+			}
 			return
 		}
 
@@ -301,19 +313,28 @@ ATTEMPT:
 					time.Sleep(delay)
 					continue ATTEMPT
 				}
-				out <- event{err: fmt.Errorf("failed to get token: %w", err)}
+				select {
+				case <-ctx.Done():
+				case out <- event{err: fmt.Errorf("failed to get token: %w", err)}:
+				}
 				return
 			}
 			lastEventID = e.Id()
 			switch e.Event() {
 			case SSETypeOutput:
-				out <- event{rawData: e.Data()}
+				select {
+				case <-ctx.Done():
+				case out <- event{rawData: e.Data()}:
+				}
 			case SSETypeDone:
 				return
 			case SSETypeLogs:
 				// TODO
 			default:
-				out <- event{err: fmt.Errorf("unknown event type %s", e.Event())}
+				select {
+				case <-ctx.Done():
+				case out <- event{err: fmt.Errorf("unknown event type %s", e.Event())}:
+				}
 				return
 			}
 		}
