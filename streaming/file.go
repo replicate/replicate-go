@@ -5,6 +5,12 @@ import (
 	"io"
 )
 
+// FileStreamer represents a stream of output files from a model.
+type FileStreamer interface {
+	io.Closer
+	NextFile(ctx context.Context) (File, error)
+}
+
 // File represents a file output from a model over an SSE stream.  On the wire,
 // it might be a data URL or a regular http URL.  File abstracts over this and
 // provides a way to get the data regardless of the implementation.

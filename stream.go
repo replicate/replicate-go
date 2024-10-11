@@ -298,16 +298,11 @@ func (f *fileStreamer) Close() error {
 	return f.s.Close()
 }
 
-type FileStreamer interface {
-	io.Closer
-	NextFile(ctx context.Context) (streaming.File, error)
-}
-
 // StreamPredictionFiles streams prediction file output via the replicate
 // streaming api.  It is the caller's responsibility to close the returned
 // FileStreamer to ensure connections and associated resources are cleaned up
 // appropriately.
-func (r *Client) StreamPredictionFiles(ctx context.Context, prediction *Prediction) (FileStreamer, error) {
+func (r *Client) StreamPredictionFiles(prediction *Prediction) (streaming.FileStreamer, error) {
 	url := prediction.URLs["stream"]
 	if url == "" {
 		return nil, errors.New("streaming not supported or not enabled for this prediction")

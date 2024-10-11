@@ -53,6 +53,7 @@ func (s *Streamer) connect(ctx context.Context) error {
 		}
 		s.attempt++
 		reconnectDelay := time.NewTimer(delay)
+		// once we only support go 1.23+, we can use time.After() here and simplify
 		defer reconnectDelay.Stop()
 		select {
 		case <-ctx.Done():
@@ -70,6 +71,7 @@ func (s *Streamer) connect(ctx context.Context) error {
 			req.Header.Set("Last-Event-ID", s.lastEventID)
 		}
 
+		//nolint:bodyclose
 		resp, err := s.c.Do(req)
 		if err != nil {
 			// try again

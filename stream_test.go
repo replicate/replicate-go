@@ -174,7 +174,7 @@ event: done
 	c, err := replicate.NewClient(replicate.WithToken("test-token"))
 	require.NoError(t, err)
 
-	files, err := c.StreamPredictionFiles(ctx, p)
+	files, err := c.StreamPredictionFiles(p)
 
 	require.NoError(t, err)
 
