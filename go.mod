@@ -5,7 +5,6 @@ go 1.21
 toolchain go1.22.0
 
 require (
-	github.com/launchdarkly/eventsource v1.7.1
 	github.com/stretchr/testify v1.8.4
 	github.com/vincent-petithory/dataurl v1.0.0
 	golang.org/x/sync v0.6.0

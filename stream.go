@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/launchdarkly/eventsource"
+	"github.com/replicate/replicate-go/internal/sse"
 	"github.com/replicate/replicate-go/streaming"
 	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/sync/errgroup"
@@ -178,7 +178,7 @@ func (r *Client) streamTextTo(ctx context.Context, writer *io.PipeWriter, url st
 	go r.streamEventsTo(ctx, ch, url, lastEventID)
 
 	for e := range ch {
-		_, err := io.WriteString(writer, e.rawData)
+		_, err := io.WriteString(writer, strings.TrimSuffix(e.rawData, "\n"))
 		if err != nil {
 			writer.CloseWithError(err)
 			return
@@ -248,21 +248,22 @@ func (r *Client) streamFilesTo(ctx context.Context, out chan<- streaming.File, u
 	go r.streamEventsTo(ctx, ch, url, lastEventID)
 
 	for e := range ch {
+		url := strings.TrimSuffix(e.rawData, "\n")
 		switch {
-		case strings.HasPrefix(e.rawData, "data:"):
+		case strings.HasPrefix(url, "data:"):
 			select {
 			case <-ctx.Done():
-			case out <- &dataURL{url: e.rawData}:
+			case out <- &dataURL{url: url}:
 			}
-		case strings.HasPrefix(e.rawData, "http"):
+		case strings.HasPrefix(url, "http"):
 			select {
 			case <-ctx.Done():
-			case out <- &httpURL{c: r.c, url: e.rawData}:
+			case out <- &httpURL{c: r.c, url: url}:
 			}
 		default:
 			select {
 			case <-ctx.Done():
-			case out <- fileError(fmt.Errorf("Could not parse URL: %s", e.rawData)):
+			case out <- fileError(fmt.Errorf("Could not parse URL: %s", url)):
 			}
 			return
 		}
@@ -303,9 +304,9 @@ ATTEMPT:
 			return
 		}
 		defer resp.Body.Close()
-		decoder := eventsource.NewDecoder(resp.Body)
+		decoder := sse.NewDecoder(resp.Body)
 		for {
-			e, err := decoder.Decode()
+			e, err := decoder.Next()
 			if err != nil {
 				if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 					// retry
@@ -319,12 +320,12 @@ ATTEMPT:
 				}
 				return
 			}
-			lastEventID = e.Id()
-			switch e.Event() {
+			lastEventID = e.ID
+			switch e.Type {
 			case SSETypeOutput:
 				select {
 				case <-ctx.Done():
-				case out <- event{rawData: e.Data()}:
+				case out <- event{rawData: e.Data}:
 				}
 			case SSETypeDone:
 				return
@@ -333,7 +334,7 @@ ATTEMPT:
 			default:
 				select {
 				case <-ctx.Done():
-				case out <- event{err: fmt.Errorf("unknown event type %s", e.Event())}:
+				case out <- event{err: fmt.Errorf("unknown event type %s", e.Type)}:
 				}
 				return
 			}
